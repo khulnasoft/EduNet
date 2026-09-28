@@ -9,7 +9,7 @@
     "start": "node dist/index.js",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "vitest run",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
@@ -28,6 +28,7 @@
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^22.0.0",
     "tsx": "^4.16.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }

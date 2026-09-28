@@ -158,4 +158,28 @@
 - CORS configuration for production
 
 ## Final Release Status
-**READY FOR PRODUCTION** - All critical security issues fixed, all builds passing, core functionality verified.
+**NOT PRODUCTION READY.**
+
+This document was originally written claiming production readiness. Subsequent
+audit disproved that claim: the test suite never executed, no migrations existed,
+and the identity service accepted refresh tokens as access tokens while falling
+back to a hardcoded JWT secret. Those defects are now fixed and the findings
+below supersede the original status.
+
+Current evidence (see `docs/EDUNET-IMPLEMENTATION-STATE.md`):
+
+| Gate | Result |
+|------|--------|
+| Typecheck | 19/19 PASS |
+| Lint | 24/24 PASS (0 errors) |
+| Tests | 51 PASS across 4 packages |
+| Build | 15/15 PASS |
+| Migrations | 17 tables verified on PostgreSQL 16 |
+| E2E | MISSING |
+| Security scan | 28 known Dependabot alerts (2 critical) |
+| CI/CD | MISSING |
+| Observability | MISSING |
+| Offline/PWA | MISSING |
+| AI, Live Learning, Tutoring, Communication, Calendar, Admin, Institution | MISSING |
+
+Remaining blockers are listed in `docs/EDUNET-ROADMAP-GAP-MATRIX.md`.

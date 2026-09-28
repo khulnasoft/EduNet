@@ -1,96 +1,129 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import jwt from 'jsonwebtoken';
-import { hashPassword, verifyPassword, generateToken, verifyToken } from './auth';
+import {
+  hashPassword,
+  verifyPassword,
+  generateAccessToken,
+  generateRefreshToken,
+  verifyToken,
+  verifyRefreshToken,
+} from './auth';
 
-describe('Auth Service', () => {
+const TEST_SECRET = 'test-secret-key';
+
+describe('Auth service', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    process.env = { ...originalEnv };
-    process.env.JWT_SECRET = 'test-secret-key';
+    process.env = { ...originalEnv, JWT_SECRET: TEST_SECRET, NODE_ENV: 'test' };
   });
 
   afterEach(() => {
     process.env = originalEnv;
   });
 
-  describe('Password Hashing', () => {
-    it('should hash a password', async () => {
-      const password = 'testPassword123';
-      const hash = await hashPassword(password);
+  describe('password hashing', () => {
+    it('hashes a password', async () => {
+      const hash = await hashPassword('testPassword123');
       expect(hash).toBeDefined();
-      expect(hash).not.toBe(password);
-      expect(hash.length).toBeGreaterThan(0);
+      expect(hash).not.toBe('testPassword123');
     });
 
-    it('should verify a correct password', async () => {
-      const password = 'testPassword123';
-      const hash = await hashPassword(password);
-      const isValid = await verifyPassword(password, hash);
-      expect(isValid).toBe(true);
+    it('accepts the correct password', async () => {
+      const hash = await hashPassword('testPassword123');
+      expect(await verifyPassword('testPassword123', hash)).toBe(true);
     });
 
-    it('should reject an incorrect password', async () => {
-      const password = 'testPassword123';
-      const wrongPassword = 'wrongPassword';
-      const hash = await hashPassword(password);
-      const isValid = await verifyPassword(wrongPassword, hash);
-      expect(isValid).toBe(false);
+    it('rejects an incorrect password', async () => {
+      const hash = await hashPassword('testPassword123');
+      expect(await verifyPassword('wrongPassword', hash)).toBe(false);
     });
 
-    it('should produce different hashes for the same password', async () => {
-      const password = 'testPassword123';
-      const hash1 = await hashPassword(password);
-      const hash2 = await hashPassword(password);
-      expect(hash1).not.toBe(hash2);
+    it('salts so identical passwords hash differently', async () => {
+      expect(await hashPassword('same')).not.toBe(await hashPassword('same'));
     });
   });
 
-  describe('JWT Token Generation', () => {
-    it('should generate a token', () => {
-      const payload = { userId: '123', role: 'student' };
-      const token = generateToken(payload);
-      expect(token).toBeDefined();
-      expect(typeof token).toBe('string');
-      expect(token.split('.').length).toBe(3);
+  describe('secret resolution', () => {
+    it('refuses to sign without JWT_SECRET', () => {
+      delete process.env.JWT_SECRET;
+      expect(() =>
+        generateAccessToken({ userId: '1', role: 'student', organizationId: 'o1' }),
+      ).toThrow('JWT_SECRET is not configured');
     });
 
-    it('should generate a refresh token with longer expiry', () => {
-      const payload = { userId: '123' };
-      const token = generateToken(payload, true);
-      expect(token).toBeDefined();
-      expect(typeof token).toBe('string');
+    it('refuses the placeholder secret in production', () => {
+      process.env.JWT_SECRET = 'your-secret-key-change-in-production';
+      process.env.NODE_ENV = 'production';
+      expect(() =>
+        generateAccessToken({ userId: '1', role: 'student', organizationId: 'o1' }),
+      ).toThrow(/placeholder/i);
     });
 
-    it('should verify a valid token', () => {
-      const payload = { userId: '123', role: 'student' };
-      const token = generateToken(payload);
+    it('allows the placeholder outside production for local dev', () => {
+      process.env.JWT_SECRET = 'your-secret-key-change-in-production';
+      process.env.NODE_ENV = 'development';
+      expect(() =>
+        generateAccessToken({ userId: '1', role: 'student', organizationId: 'o1' }),
+      ).not.toThrow();
+    });
+  });
+
+  describe('access tokens', () => {
+    it('round-trips the claims', () => {
+      const token = generateAccessToken({ userId: 'u1', role: 'teacher', organizationId: 'o1' });
       const decoded = verifyToken(token);
-      expect(decoded).toBeDefined();
-      expect(decoded.userId).toBe('123');
-      expect(decoded.role).toBe('student');
+      expect(decoded.userId).toBe('u1');
+      expect(decoded.role).toBe('teacher');
+      expect(decoded.organizationId).toBe('o1');
+      expect(decoded.tokenKind).toBe('access');
     });
 
-    it('should throw on invalid token', () => {
-      expect(() => verifyToken('invalid-token')).toThrow('Invalid token');
+    it('rejects a malformed token', () => {
+      expect(() => verifyToken('not-a-token')).toThrow('Invalid token');
     });
 
-    it('should throw on expired token', () => {
-      const expiredToken = jwt.sign(
-        { userId: '123' },
-        'test-secret-key',
-        { expiresIn: '-1s' }
+    it('rejects an expired token', () => {
+      const token = jwt.sign({ userId: 'u1', tokenKind: 'access' }, TEST_SECRET, { expiresIn: '-1s' });
+      expect(() => verifyToken(token)).toThrow('Invalid token');
+    });
+
+    it('rejects a token signed with another secret', () => {
+      const token = jwt.sign({ userId: 'u1', tokenKind: 'access' }, 'other-secret', { expiresIn: '1h' });
+      expect(() => verifyToken(token)).toThrow('Invalid token');
+    });
+  });
+
+  describe('token kind confusion', () => {
+    it('rejects a refresh token used as an access token', () => {
+      const refreshToken = generateRefreshToken({ userId: 'u1' });
+      expect(() => verifyToken(refreshToken)).toThrow('Invalid token');
+    });
+
+    it('rejects an access token used to refresh', () => {
+      const accessToken = generateAccessToken({ userId: 'u1', role: 'student', organizationId: 'o1' });
+      expect(() => verifyRefreshToken(accessToken)).toThrow('Invalid token');
+    });
+
+    it('rejects a legacy token with no tokenKind claim', () => {
+      const legacy = jwt.sign({ userId: 'u1' }, TEST_SECRET, { expiresIn: '1h' });
+      expect(() => verifyToken(legacy)).toThrow('Invalid token');
+      expect(() => verifyRefreshToken(legacy)).toThrow('Invalid token');
+    });
+  });
+
+  describe('refresh tokens', () => {
+    it('round-trips the user id', () => {
+      const token = generateRefreshToken({ userId: 'u1' });
+      expect(verifyRefreshToken(token).userId).toBe('u1');
+    });
+
+    it('outlives an access token', () => {
+      const access = verifyToken(
+        generateAccessToken({ userId: 'u1', role: 'student', organizationId: 'o1' }),
       );
-      expect(() => verifyToken(expiredToken)).toThrow('Invalid token');
-    });
-
-    it('should throw on token with wrong secret', () => {
-      const wrongToken = jwt.sign(
-        { userId: '123' },
-        'wrong-secret',
-        { expiresIn: '1h' }
-      );
-      expect(() => verifyToken(wrongToken)).toThrow('Invalid token');
+      const refresh = verifyRefreshToken(generateRefreshToken({ userId: 'u1' }));
+      expect(refresh.exp! - refresh.iat!).toBeGreaterThan(access.exp! - access.iat!);
     });
   });
 });

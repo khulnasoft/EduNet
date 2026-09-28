@@ -7,9 +7,12 @@
   "scripts": {
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
-    "migrate": "drizzle-kit push:pg",
-    "migrate:generate": "drizzle-kit generate:pg",
-    "studio": "drizzle-kit studio"
+    "migrate": "drizzle-kit migrate",
+    "migrate:generate": "drizzle-kit generate",
+    "studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:push": "drizzle-kit push"
   },
   "dependencies": {
     "@edunet/types": "workspace:*",

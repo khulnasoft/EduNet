@@ -9,7 +9,6 @@
     "lint": "next lint",
     "format": "prettier --write \"**/*.{ts,tsx,js,jsx,json,md}\"",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
     "test:e2e": "playwright test",
     "clean": "rm -rf .next dist node_modules"
   },

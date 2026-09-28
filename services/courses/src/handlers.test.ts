@@ -12,14 +12,30 @@ vi.mock('./db', () => ({
   getCourseEnrollmentCount: vi.fn(),
 }));
 
-vi.mock('@edunet/validation', () => ({
-  courseSchema: {
-    parse: vi.fn((data) => data),
-    partial: vi.fn(() => ({
-      parse: vi.fn((data) => data),
-    })),
-  },
-}));
+const REQUIRED_FIELDS = ['organizationId', 'title', 'description', 'subject', 'teacherId'] as const;
+
+/** Minimal stand-in for the zod courseSchema: rejects payloads missing required
+ *  fields so validation failures are actually exercised by the handler tests. */
+vi.mock('@edunet/validation', () => {
+  const assertRequired = (data: Record<string, unknown>, fields: readonly string[]) => {
+    for (const field of fields) {
+      const value = data[field];
+      if (value === undefined || value === null || value === '') {
+        throw new Error(`Invalid course data: ${field} is required`);
+      }
+    }
+    return data;
+  };
+
+  return {
+    courseSchema: {
+      parse: vi.fn((data: Record<string, unknown>) => assertRequired(data, REQUIRED_FIELDS)),
+      partial: vi.fn(() => ({
+        parse: vi.fn((data: Record<string, unknown>) => data),
+      })),
+    },
+  };
+});
 
 describe('Course Handlers', () => {
   const originalEnv = process.env;

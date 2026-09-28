@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import jwt from 'jsonwebtoken';
 import { authenticate, authorize } from './middleware';
-import { generateToken } from './auth';
+import { generateAccessToken } from './auth';
 
 describe('Auth Middleware', () => {
   const originalEnv = process.env;
@@ -68,7 +68,7 @@ describe('Auth Middleware', () => {
     });
 
     it('should accept request with valid token', () => {
-      const token = generateToken({ userId: '123', role: 'student' });
+      const token = generateAccessToken({ userId: '123', role: 'student', organizationId: 'o1' });
       const req: any = { headers: { authorization: `Bearer ${token}` } };
       const res: any = {
         statusCode: 200,
@@ -88,7 +88,7 @@ describe('Auth Middleware', () => {
 
     it('should reject expired token', () => {
       const expiredToken = jwt.sign(
-        { userId: '123', role: 'student' },
+        { userId: '123', role: 'student', tokenKind: 'access' },
         'test-secret-key',
         { expiresIn: '-1s' }
       );

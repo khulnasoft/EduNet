@@ -186,11 +186,30 @@ importers:
         specifier: ^5.5.0
         version: 5.9.3
 
+  packages/rbac:
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.4
+      typescript:
+        specifier: ^5.5.0
+        version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.4)(@vitest/ui@2.1.9)
+
   packages/testing:
+    dependencies:
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.3
     devDependencies:
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14
+      '@types/jsonwebtoken':
+        specifier: ^9.0.0
+        version: 9.0.10
       '@vitest/ui':
         specifier: ^2.0.0
         version: 2.1.9(vitest@2.1.9)
@@ -459,6 +478,9 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.4)(@vitest/ui@2.1.9)
 
   services/enrollments:
     dependencies:
@@ -505,6 +527,9 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.4)(@vitest/ui@2.1.9)
 
   services/identity:
     dependencies:
@@ -514,6 +539,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -557,6 +585,9 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^2.0.0
+        version: 2.1.9(@types/node@22.20.4)(@vitest/ui@2.1.9)
 
   services/notifications:
     dependencies:

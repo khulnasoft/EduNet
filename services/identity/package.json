@@ -9,20 +9,21 @@
     "start": "node dist/index.js",
     "lint": "eslint . --ext .ts",
     "typecheck": "tsc --noEmit",
-    "test": "jest",
+    "test": "vitest run",
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@edunet/types": "workspace:*",
-    "@edunet/validation": "workspace:*",
     "@edunet/config": "workspace:*",
     "@edunet/database": "workspace:*",
+    "@edunet/rbac": "workspace:*",
+    "@edunet/types": "workspace:*",
+    "@edunet/validation": "workspace:*",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
-    "express": "^4.19.0",
-    "zod": "^3.23.0",
     "drizzle-orm": "^0.33.0",
-    "postgres": "^3.4.0"
+    "express": "^4.19.0",
+    "jsonwebtoken": "^9.0.2",
+    "postgres": "^3.4.0",
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
@@ -30,6 +31,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/node": "^22.0.0",
     "tsx": "^4.16.0",
-    "typescript": "^5.5.0"
+    "typescript": "^5.5.0",
+    "vitest": "^2.0.0"
   }
 }

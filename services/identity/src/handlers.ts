@@ -1,6 +1,12 @@
 import { Request, Response } from 'express';
 import { registerSchema, loginSchema } from '@edunet/validation';
-import { hashPassword, verifyPassword, generateToken, verifyToken } from './auth';
+import {
+  hashPassword,
+  verifyPassword,
+  generateAccessToken,
+  generateRefreshToken,
+  verifyRefreshToken,
+} from './auth';
 import { findUserByEmail, findUserById, findOrganizationByCode, createUser } from './db';
 
 export async function registerHandler(req: Request, res: Response) {
@@ -27,8 +33,12 @@ export async function registerHandler(req: Request, res: Response) {
       organizationId: organization.id,
     });
 
-    const token = generateToken({ userId: user.id, role: user.role, organizationId: user.organizationId });
-    const refreshToken = generateToken({ userId: user.id }, true);
+    const token = generateAccessToken({
+      userId: user.id,
+      role: user.role,
+      organizationId: user.organizationId,
+    });
+    const refreshToken = generateRefreshToken({ userId: user.id });
 
     res.status(201).json({
       message: 'User registered successfully',
@@ -63,8 +73,12 @@ export async function loginHandler(req: Request, res: Response) {
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    const token = generateToken({ userId: user.id, role: user.role, organizationId: user.organizationId });
-    const refreshToken = generateToken({ userId: user.id }, true);
+    const token = generateAccessToken({
+      userId: user.id,
+      role: user.role,
+      organizationId: user.organizationId,
+    });
+    const refreshToken = generateRefreshToken({ userId: user.id });
 
     res.json({ 
       token, 
@@ -86,15 +100,24 @@ export async function loginHandler(req: Request, res: Response) {
 export async function refreshTokenHandler(req: Request, res: Response) {
   try {
     const { refreshToken } = req.body;
-    const payload = verifyToken(refreshToken, true);
-    
+
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      return res.status(400).json({ error: 'refreshToken is required' });
+    }
+
+    const payload = verifyRefreshToken(refreshToken);
+
     const user = await findUserById(payload.userId);
     if (!user) {
       return res.status(401).json({ error: 'User not found' });
     }
 
-    const newToken = generateToken({ userId: user.id, role: user.role, organizationId: user.organizationId });
-    
+    const newToken = generateAccessToken({
+      userId: user.id,
+      role: user.role,
+      organizationId: user.organizationId,
+    });
+
     res.json({ token: newToken });
   } catch (error: any) {
     res.status(401).json({ error: 'Invalid refresh token' });

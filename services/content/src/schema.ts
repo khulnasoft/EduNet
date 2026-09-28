@@ -70,7 +70,7 @@ export const contentVersions = pgTable('content_versions', {
   version: integer('version').notNull(),
   title: text('title').notNull(),
   content: jsonb('content'),
-  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }).notNull(),
+  createdBy: uuid('created_by').references(() => users.id, { onDelete: 'set null' }),
   createdAt: timestamp('created_at').defaultNow().notNull(),
 }, (table) => ({
   lessonVersionIdx: unique('content_versions_lesson_version_unique').on(table.lessonId, table.version),
@@ -82,7 +82,7 @@ export const mediaFiles = pgTable('media_files', {
   id: uuid('id').defaultRandom().primaryKey(),
   lessonId: uuid('lesson_id').references(() => lessons.id, { onDelete: 'cascade' }),
   courseId: uuid('course_id').references(() => courses.id, { onDelete: 'cascade' }),
-  uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }).notNull(),
+  uploadedBy: uuid('uploaded_by').references(() => users.id, { onDelete: 'set null' }),
   type: text('type').notNull(), // document, image, audio, video
   title: text('title').notNull(),
   description: text('description'),

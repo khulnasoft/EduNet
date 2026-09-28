@@ -6,7 +6,7 @@ export const organizations = pgTable('organizations', {
   id: uuid('id').defaultRandom().primaryKey(),
   name: varchar('name', { length: 200 }).notNull(),
   type: varchar('type', { length: 50 }).notNull(), // school, district, university, training_center
-  code: varchar('code', { length: 50 }).notNull().unique(),
+  code: varchar('code', { length: 50 }).notNull(),
   address: text('address'),
   isActive: boolean('is_active').default(true).notNull(),
   deletedAt: timestamp('deleted_at'),
@@ -21,7 +21,7 @@ export const organizations = pgTable('organizations', {
 // Users
 export const users = pgTable('users', {
   id: uuid('id').defaultRandom().primaryKey(),
-  email: varchar('email', { length: 255 }).notNull().unique(),
+  email: varchar('email', { length: 255 }).notNull(),
   phoneNumber: varchar('phone_number', { length: 20 }),
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   firstName: varchar('first_name', { length: 100 }).notNull(),

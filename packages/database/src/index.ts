@@ -5,35 +5,85 @@ import * as schema from './schema';
 
 export * from './schema';
 
-const connectionString = process.env.DATABASE_URL ||
-  `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
+type Database = ReturnType<typeof drizzle<typeof schema>>;
 
-const client = postgres(connectionString);
-const db = drizzle(client, { schema });
+/**
+ * Resolves the connection string, failing loudly instead of silently building
+ * `postgres://undefined:undefined@undefined:undefined/undefined`.
+ */
+export function resolveConnectionString(): string {
+  if (process.env.DATABASE_URL) {
+    return process.env.DATABASE_URL;
+  }
+
+  const { DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME } = process.env;
+  const missing = Object.entries({ DB_USER, DB_PASSWORD, DB_HOST, DB_PORT, DB_NAME })
+    .filter(([, value]) => value === undefined || value === '')
+    .map(([key]) => key);
+
+  if (missing.length > 0) {
+    throw new Error(
+      `Database is not configured: set DATABASE_URL or all of ${missing.join(', ')}`,
+    );
+  }
+
+  return `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}:${DB_PORT}/${DB_NAME}`;
+}
+
+let client: postgres.Sql | null = null;
+let database: Database | null = null;
+
+/**
+ * Lazily creates the shared client.
+ *
+ * Connection setup must not happen at import time: schema modules are imported
+ * by drizzle-kit and by tooling without a database, and eagerly opening a
+ * client made `import '@edunet/database'` crash whenever the env was absent.
+ */
+export function getDb(): Database {
+  if (!database) {
+    client = postgres(resolveConnectionString());
+    database = drizzle(client, { schema });
+  }
+  return database;
+}
 
 export async function findCourseById(id: string) {
-  const result = await db.select().from(schema.courses).where(eq(schema.courses.id, id));
+  const result = await getDb()
+    .select()
+    .from(schema.courses)
+    .where(eq(schema.courses.id, id));
   return result[0] || null;
 }
 
 export async function findAssignmentById(id: string) {
-  const result = await db.select().from(schema.assignments).where(eq(schema.assignments.id, id));
+  const result = await getDb()
+    .select()
+    .from(schema.assignments)
+    .where(eq(schema.assignments.id, id));
   return result[0] || null;
 }
 
 export async function findSubmissionById(id: string) {
-  const result = await db.select().from(schema.submissions).where(eq(schema.submissions.id, id));
+  const result = await getDb()
+    .select()
+    .from(schema.submissions)
+    .where(eq(schema.submissions.id, id));
   return result[0] || null;
 }
 
 export async function findUserById(id: string) {
-  const result = await db.select().from(schema.users).where(eq(schema.users.id, id));
+  const result = await getDb()
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.id, id));
   return result[0] || null;
 }
 
 export async function findOrganizationById(id: string) {
-  const result = await db.select().from(schema.organizations).where(eq(schema.organizations.id, id));
+  const result = await getDb()
+    .select()
+    .from(schema.organizations)
+    .where(eq(schema.organizations.id, id));
   return result[0] || null;
 }
-
-export { db };

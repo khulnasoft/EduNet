@@ -1,5 +1,14 @@
 # EduNet Progress Tracker
 
+> **Superseded.** The per-phase checklist below was written by an earlier agent
+> and overstated completion. In particular "tests" never ran (the suite invoked
+> an uninstalled `jest` binary) and no database migration existed. Authoritative,
+> evidence-based status lives in:
+>
+> - `docs/EDUNET-IMPLEMENTATION-STATE.md` — verified gates, defects fixed
+> - `docs/EDUNET-ROADMAP-GAP-MATRIX.md` — per-workstream gap status
+> - `docs/PRODUCTION_VERIFICATION.md` — original findings, corrected status
+
 ## CURRENT GATE
 Phase 13 - Quality Gate (Build Verification)
 

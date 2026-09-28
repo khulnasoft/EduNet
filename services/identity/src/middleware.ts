@@ -1,11 +1,11 @@
 import { Request, Response, NextFunction } from 'express';
 import { verifyToken } from './auth';
-import { findUserById } from './db';
 
 export interface AuthRequest extends Request {
   user?: {
     id: string;
     role: string;
+    organizationId?: string;
   };
 }
 
@@ -18,28 +18,17 @@ export function authenticate(req: AuthRequest, res: Response, next: NextFunction
 
     const token = authHeader.substring(7);
     const payload = verifyToken(token);
-    
+
     req.user = {
       id: payload.userId,
       role: payload.role,
+      organizationId: payload.organizationId,
     };
-    
+
     next();
-  } catch (error) {
+  } catch {
     res.status(401).json({ error: 'Invalid token' });
   }
 }
 
-export function authorize(...allowedRoles: string[]) {
-  return (req: AuthRequest, res: Response, next: NextFunction) => {
-    if (!req.user) {
-      return res.status(401).json({ error: 'Not authenticated' });
-    }
-
-    if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ error: 'Insufficient permissions' });
-    }
-
-    next();
-  };
-}
+export { authorize } from '@edunet/rbac';
