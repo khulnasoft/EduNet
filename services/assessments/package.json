@@ -10,9 +10,10 @@
   },
   "dependencies": {
     "@edunet/database": "workspace:*",
+    "@edunet/rbac": "workspace:*",
     "@edunet/validation": "workspace:*",
-    "express": "^4.18.2",
     "drizzle-orm": "^0.33.0",
+    "express": "^4.18.2",
     "postgres": "^3.4.0"
   },
   "devDependencies": {

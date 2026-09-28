@@ -1,11 +1,13 @@
 /**
- * Canonical role-based access control for EduNet.
+ * Canonical role-based access control and request authentication for EduNet.
  *
- * Every service MUST import authorization from this package so that role
- * semantics (in particular the admin superuser rule) cannot drift between
- * services. Divergent copies of `authorize()` previously allowed some services
- * to reject admins on teacher-only routes while others allowed them.
+ * Every service MUST import authentication and authorization from this package.
+ * Eleven services previously carried their own copy of `authenticate()`,
+ * including a hardcoded fallback JWT secret and inconsistent admin semantics.
+ * Centralising them removes the duplicate secret and the drift.
  */
+
+import jwt, { JwtPayload } from 'jsonwebtoken';
 
 export const ROLES = {
   STUDENT: 'student',
@@ -39,12 +41,73 @@ export function hasRole(userRole: string | undefined, allowedRoles: readonly str
   return allowedRoles.includes(userRole);
 }
 
-type MinimalRequest = { user?: AuthenticatedUser };
+type MinimalRequest = { user?: AuthenticatedUser; headers?: Record<string, unknown> };
 type MinimalResponse = {
   status(code: number): MinimalResponse;
   json(body: unknown): unknown;
 };
 type NextFunction = (err?: unknown) => void;
+
+/**
+ * Resolves the signing secret, refusing to fall back to a hardcoded value.
+ *
+ * A hardcoded fallback previously let a deployment that forgot to configure
+ * JWT_SECRET sign tokens with a publicly known key.
+ */
+export function resolveSecret(): string {
+  const secret = process.env.JWT_SECRET;
+
+  if (!secret || secret.trim().length === 0) {
+    throw new Error('JWT_SECRET is not configured');
+  }
+
+  if (process.env.NODE_ENV === 'production' && secret === 'your-secret-key-change-in-production') {
+    throw new Error('JWT_SECRET must be changed from its placeholder value in production');
+  }
+
+  return secret;
+}
+
+/** Claims the identity service puts on an access token. */
+export interface AccessTokenClaims extends JwtPayload {
+  userId: string;
+  role: string;
+  organizationId: string;
+}
+
+/**
+ * Express middleware that verifies the bearer access token and populates
+ * `req.user`. Rejects missing, malformed, expired, wrong-secret and
+ * refresh-token requests with 401.
+ */
+export function authenticate(req: MinimalRequest, res: MinimalResponse, next: NextFunction): void {
+  const authHeader = req.headers?.authorization;
+
+  if (typeof authHeader !== 'string' || !authHeader.startsWith('Bearer ')) {
+    res.status(401).json({ error: 'No token provided' });
+    return;
+  }
+
+  try {
+    const claims = jwt.verify(authHeader.substring(7), resolveSecret()) as AccessTokenClaims;
+
+    // Access tokens are issued with tokenKind='access'; refuse refresh tokens.
+    if (claims.tokenKind !== 'access') {
+      res.status(401).json({ error: 'Invalid token' });
+      return;
+    }
+
+    req.user = {
+      id: claims.userId,
+      role: claims.role,
+      organizationId: claims.organizationId,
+    };
+
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
 
 /**
  * Express middleware factory enforcing that the authenticated user holds one

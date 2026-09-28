@@ -187,7 +187,14 @@ importers:
         version: 5.9.3
 
   packages/rbac:
+    dependencies:
+      jsonwebtoken:
+        specifier: ^9.0.2
+        version: 9.0.3
     devDependencies:
+      '@types/jsonwebtoken':
+        specifier: ^9.0.0
+        version: 9.0.10
       '@types/node':
         specifier: ^22.0.0
         version: 22.20.4
@@ -269,6 +276,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -312,6 +322,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -355,6 +368,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -398,6 +414,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -441,6 +460,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -490,6 +512,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -594,6 +619,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -640,6 +668,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -683,6 +714,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -726,6 +760,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/validation':
         specifier: workspace:*
         version: link:../../packages/validation
@@ -772,6 +809,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types
@@ -818,6 +858,9 @@ importers:
       '@edunet/database':
         specifier: workspace:*
         version: link:../../packages/database
+      '@edunet/rbac':
+        specifier: workspace:*
+        version: link:../../packages/rbac
       '@edunet/types':
         specifier: workspace:*
         version: link:../../packages/types

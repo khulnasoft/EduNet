@@ -12,16 +12,17 @@
     "clean": "rm -rf dist node_modules"
   },
   "dependencies": {
-    "@edunet/types": "workspace:*",
-    "@edunet/validation": "workspace:*",
     "@edunet/config": "workspace:*",
     "@edunet/database": "workspace:*",
-    "express": "^4.19.0",
-    "zod": "^3.23.0",
+    "@edunet/rbac": "workspace:*",
+    "@edunet/types": "workspace:*",
+    "@edunet/validation": "workspace:*",
     "bcryptjs": "^2.4.3",
     "drizzle-orm": "^0.33.0",
+    "express": "^4.19.0",
+    "jsonwebtoken": "^9.0.2",
     "postgres": "^3.4.0",
-    "jsonwebtoken": "^9.0.2"
+    "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.6",
