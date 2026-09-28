@@ -41,11 +41,11 @@ class ApiClient {
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({}));
+      const errorData = await response.json().catch(() => ({})) as { error?: string };
       throw new Error(errorData.error || `Request failed with status ${response.status}`);
     }
 
-    return response.json();
+    return response.json() as Promise<T>;
   }
 
   async get<T>(endpoint: string): Promise<T> {

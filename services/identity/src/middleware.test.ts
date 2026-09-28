@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { authenticate, authorize, AuthRequest } from './middleware';
+import jwt from 'jsonwebtoken';
+import { authenticate, authorize } from './middleware';
 import { generateToken } from './auth';
 
 describe('Auth Middleware', () => {
@@ -86,7 +87,6 @@ describe('Auth Middleware', () => {
     });
 
     it('should reject expired token', () => {
-      const jwt = require('jsonwebtoken');
       const expiredToken = jwt.sign(
         { userId: '123', role: 'student' },
         'test-secret-key',

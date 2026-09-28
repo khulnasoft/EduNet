@@ -3,7 +3,13 @@
   "compilerOptions": {
     "jsx": "react-jsx",
     "lib": ["ES2022", "DOM", "DOM.Iterable"],
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "baseUrl": ".",
+    "paths": {
+      "@edunet/ui/lib/utils": ["./src/lib/utils.ts"],
+      "@edunet/ui/components": ["./src/components/index.ts"],
+      "@edunet/ui/components/*": ["./src/components/*.tsx"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]

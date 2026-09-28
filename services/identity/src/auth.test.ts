@@ -1,4 +1,5 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import jwt from 'jsonwebtoken';
 import { hashPassword, verifyPassword, generateToken, verifyToken } from './auth';
 
 describe('Auth Service', () => {
@@ -75,7 +76,6 @@ describe('Auth Service', () => {
     });
 
     it('should throw on expired token', () => {
-      const jwt = require('jsonwebtoken');
       const expiredToken = jwt.sign(
         { userId: '123' },
         'test-secret-key',
@@ -85,7 +85,6 @@ describe('Auth Service', () => {
     });
 
     it('should throw on token with wrong secret', () => {
-      const jwt = require('jsonwebtoken');
       const wrongToken = jwt.sign(
         { userId: '123' },
         'wrong-secret',
