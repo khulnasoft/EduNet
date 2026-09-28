@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { findCourseById, findAssignmentById } from '@edunet/database';
 import {
   findSubmissionById,
   findSubmission,
@@ -87,18 +88,28 @@ export async function listSubmissionsHandler(req: AuthRequest, res: Response) {
 export async function gradeSubmissionHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
-    const { grade, gradedBy } = req.body;
-    
-    if (grade === undefined || !gradedBy) {
-      return res.status(400).json({ error: 'grade and gradedBy are required' });
+    const { grade, feedback } = req.body;
+
+    if (grade === undefined) {
+      return res.status(400).json({ error: 'grade is required' });
     }
-    
+
     const existing = await findSubmissionById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Submission not found' });
     }
 
-    const submission = await gradeSubmission(id, grade, gradedBy);
+    const assignment = await findAssignmentById(existing.assignmentId);
+    if (!assignment) {
+      return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    const course = await findCourseById(assignment.courseId);
+    if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only grade submissions for your own courses' });
+    }
+
+    const submission = await gradeSubmission(id, grade, req.user.id, feedback);
     res.json(submission);
   } catch (error: any) {
     res.status(400).json({ error: error.message });

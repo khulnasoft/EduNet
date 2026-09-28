@@ -1,4 +1,5 @@
 import { Request, Response } from 'express';
+import { findCourseById } from '@edunet/database';
 import {
   findLessonById,
   listLessonsByCourse,
@@ -31,9 +32,18 @@ export interface AuthRequest extends Request {
 export async function createLessonHandler(req: AuthRequest, res: Response) {
   try {
     const { courseId, title, type, content, order } = req.body;
-    
+
     if (!courseId || !title || !type || order === undefined) {
       return res.status(400).json({ error: 'courseId, title, type, and order are required' });
+    }
+
+    const course = await findCourseById(courseId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    if (req.user?.role !== 'admin' && course.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only add content to your own courses' });
     }
 
     const lesson = await createLesson({
@@ -46,7 +56,7 @@ export async function createLessonHandler(req: AuthRequest, res: Response) {
       duration: req.body.duration,
       isPublished: req.body.isPublished || 'false',
     });
-    
+
     res.status(201).json(lesson);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -89,17 +99,22 @@ export async function updateLessonHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
     const data = req.body;
-    
+
     const existing = await findLessonById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Lesson not found' });
+    }
+
+    const course = await findCourseById(existing.courseId);
+    if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only edit content for your own courses' });
     }
 
     const lesson = await updateLesson(id, {
       ...data,
       publishedAt: data.isPublished === 'true' && !existing.publishedAt ? new Date() : undefined,
     });
-    
+
     res.json(lesson);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -109,7 +124,17 @@ export async function updateLessonHandler(req: AuthRequest, res: Response) {
 export async function deleteLessonHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
-    
+
+    const existing = await findLessonById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Lesson not found' });
+    }
+
+    const course = await findCourseById(existing.courseId);
+    if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only delete content for your own courses' });
+    }
+
     const lesson = await deleteLesson(id);
     res.json(lesson);
   } catch (error: any) {
@@ -235,10 +260,20 @@ export async function deleteLessonProgressHandler(req: AuthRequest, res: Respons
 // Resource handlers
 export async function createResourceHandler(req: AuthRequest, res: Response) {
   try {
-    const { title, type, url } = req.body;
-    
+    const { title, type, url, courseId } = req.body;
+
     if (!title || !type || !url) {
       return res.status(400).json({ error: 'title, type, and url are required' });
+    }
+
+    if (courseId) {
+      const course = await findCourseById(courseId);
+      if (!course) {
+        return res.status(404).json({ error: 'Course not found' });
+      }
+      if (req.user?.role !== 'admin' && course.teacherId !== req.user?.id) {
+        return res.status(403).json({ error: 'You can only add resources to your own courses' });
+      }
     }
 
     const resource = await createResource({
@@ -253,7 +288,7 @@ export async function createResourceHandler(req: AuthRequest, res: Response) {
       order: req.body.order,
       isDownloadable: req.body.isDownloadable || 'true',
     });
-    
+
     res.status(201).json(resource);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -300,10 +335,17 @@ export async function updateResourceHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
     const data = req.body;
-    
+
     const existing = await findResourceById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Resource not found' });
+    }
+
+    if (existing.courseId) {
+      const course = await findCourseById(existing.courseId);
+      if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+        return res.status(403).json({ error: 'You can only edit resources for your own courses' });
+      }
     }
 
     const resource = await updateResource(id, data);
@@ -316,7 +358,19 @@ export async function updateResourceHandler(req: AuthRequest, res: Response) {
 export async function deleteResourceHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
-    
+
+    const existing = await findResourceById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Resource not found' });
+    }
+
+    if (existing.courseId) {
+      const course = await findCourseById(existing.courseId);
+      if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+        return res.status(403).json({ error: 'You can only delete resources for your own courses' });
+      }
+    }
+
     const resource = await deleteResource(id);
     res.json(resource);
   } catch (error: any) {

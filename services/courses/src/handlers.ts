@@ -90,7 +90,7 @@ export async function updateCourseHandler(req: AuthRequest, res: Response) {
 export async function deleteCourseHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
-    
+
     const existing = await findCourseById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Course not found' });
@@ -104,5 +104,45 @@ export async function deleteCourseHandler(req: AuthRequest, res: Response) {
     res.json(course);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
+  }
+}
+
+export async function publishCourseHandler(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const existing = await findCourseById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    if (req.user?.role !== 'admin' && existing.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only publish your own courses' });
+    }
+
+    const course = await updateCourse(id, { isActive: true });
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
+  }
+}
+
+export async function unpublishCourseHandler(req: AuthRequest, res: Response) {
+  try {
+    const { id } = req.params;
+
+    const existing = await findCourseById(id);
+    if (!existing) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    if (req.user?.role !== 'admin' && existing.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only unpublish your own courses' });
+    }
+
+    const course = await updateCourse(id, { isActive: false });
+    res.json(course);
+  } catch (error: any) {
+    res.status(400).json({ error: error.message });
   }
 }

@@ -57,7 +57,7 @@ export async function createSubmission(data: {
   return submission;
 }
 
-export async function gradeSubmission(id: string, grade: number, gradedBy: string) {
+export async function gradeSubmission(id: string, grade: number, gradedBy: string, feedback?: string) {
   const db = getDb();
   const [submission] = await db
     .update(submissions)
@@ -65,6 +65,7 @@ export async function gradeSubmission(id: string, grade: number, gradedBy: strin
       grade,
       gradedBy,
       gradedAt: new Date(),
+      feedback: feedback || null,
     })
     .where(eq(submissions.id, id))
     .returning();

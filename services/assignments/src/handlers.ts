@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { assignmentSchema } from '@edunet/validation';
+import { findCourseById } from '@edunet/database';
 import {
   findAssignmentById,
   listAssignmentsByCourse,
@@ -67,10 +68,15 @@ export async function updateAssignmentHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
     const data = assignmentSchema.partial().parse(req.body);
-    
+
     const existing = await findAssignmentById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    const course = await findCourseById(existing.courseId);
+    if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only edit assignments for your own courses' });
     }
 
     const assignment = await updateAssignment(id, {
@@ -86,10 +92,15 @@ export async function updateAssignmentHandler(req: AuthRequest, res: Response) {
 export async function deleteAssignmentHandler(req: AuthRequest, res: Response) {
   try {
     const { id } = req.params;
-    
+
     const existing = await findAssignmentById(id);
     if (!existing) {
       return res.status(404).json({ error: 'Assignment not found' });
+    }
+
+    const course = await findCourseById(existing.courseId);
+    if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
+      return res.status(403).json({ error: 'You can only delete assignments for your own courses' });
     }
 
     const assignment = await deleteAssignment(id);

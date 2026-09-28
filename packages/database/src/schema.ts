@@ -58,6 +58,8 @@ export const courses = pgTable('courses', {
   teacherIdx: index('courses_teacher_id_idx').on(table.teacherId),
   subjectIdx: index('courses_subject_idx').on(table.subject),
   isActiveIdx: index('courses_is_active_idx').on(table.isActive),
+  orgTeacherIdx: index('courses_org_teacher_idx').on(table.organizationId, table.teacherId),
+  orgActiveIdx: index('courses_org_active_idx').on(table.organizationId, table.isActive),
 }));
 
 // Parent-Child Relationships
@@ -93,6 +95,8 @@ export const enrollments = pgTable('enrollments', {
   studentIdx: index('enrollments_student_id_idx').on(table.studentId),
   courseIdx: index('enrollments_course_id_idx').on(table.courseId),
   statusIdx: index('enrollments_status_idx').on(table.status),
+  studentStatusIdx: index('enrollments_student_status_idx').on(table.studentId, table.status),
+  courseStatusIdx: index('enrollments_course_status_idx').on(table.courseId, table.status),
 }));
 
 // Assignments
@@ -111,6 +115,8 @@ export const assignments = pgTable('assignments', {
   courseIdx: index('assignments_course_id_idx').on(table.courseId),
   dueDateIdx: index('assignments_due_date_idx').on(table.dueDate),
   isActiveIdx: index('assignments_is_active_idx').on(table.isActive),
+  courseActiveIdx: index('assignments_course_active_idx').on(table.courseId, table.isActive),
+  courseDueDateIdx: index('assignments_course_due_date_idx').on(table.courseId, table.dueDate),
 }));
 
 // Submissions
@@ -121,6 +127,7 @@ export const submissions = pgTable('submissions', {
   content: text('content').notNull(),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
   grade: serial('grade'),
+  feedback: text('feedback'),
   gradedAt: timestamp('graded_at'),
   gradedBy: uuid('graded_by').references(() => users.id, { onDelete: 'set null' }),
   deletedAt: timestamp('deleted_at'),
@@ -130,6 +137,8 @@ export const submissions = pgTable('submissions', {
   assignmentIdx: index('submissions_assignment_id_idx').on(table.assignmentId),
   studentIdx: index('submissions_student_id_idx').on(table.studentId),
   gradedByIdx: index('submissions_graded_by_idx').on(table.gradedBy),
+  studentGradeIdx: index('submissions_student_grade_idx').on(table.studentId, table.grade),
+  assignmentGradeIdx: index('submissions_assignment_grade_idx').on(table.assignmentId, table.grade),
 }));
 
 // Relations

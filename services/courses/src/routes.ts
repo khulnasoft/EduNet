@@ -6,6 +6,8 @@ import {
   listCoursesHandler,
   updateCourseHandler,
   deleteCourseHandler,
+  publishCourseHandler,
+  unpublishCourseHandler,
 } from './handlers';
 
 export interface AuthRequest extends Request {
@@ -61,6 +63,8 @@ export function registerRoutes(app: any) {
   router.get('/', authenticate, listCoursesHandler);
   router.get('/:id', authenticate, getCourseHandler);
   router.put('/:id', authenticate, authorize('teacher', 'admin'), updateCourseHandler);
+  router.post('/:id/publish', authenticate, authorize('teacher', 'admin'), publishCourseHandler);
+  router.post('/:id/unpublish', authenticate, authorize('teacher', 'admin'), unpublishCourseHandler);
   router.delete('/:id', authenticate, authorize('teacher', 'admin'), deleteCourseHandler);
 
   app.use('/api/courses', router);

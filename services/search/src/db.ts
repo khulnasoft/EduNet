@@ -1,23 +1,36 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import postgres from 'postgres';
 import { courses, users, assignments, organizations } from '@edunet/database';
-import { eq, or, and, ilike, sql } from 'drizzle-orm';
+import { eq, or, and, ilike, sql, desc, asc } from 'drizzle-orm';
 
 const connectionString = process.env.DATABASE_URL || 'postgres://localhost:5432/edunet';
 const client = postgres(connectionString);
 export const db = drizzle(client);
 
-// Search functions using PostgreSQL ILIKE for case-insensitive search
-export async function searchCourses(query: string, organizationId?: string, limit = 20, offset = 0) {
+function buildSearchCondition(column: any, query: string) {
+  return ilike(column, `%${query}%`);
+}
+
+export async function searchCourses(
+  query: string,
+  organizationId?: string,
+  limit = 20,
+  offset = 0,
+  sortBy: 'title' | 'createdAt' | 'enrollmentCount' = 'createdAt',
+  sortOrder: 'asc' | 'desc' = 'desc'
+) {
   const conditions = [
-    ilike(courses.title, `%${query}%`),
-    ilike(courses.description, `%${query}%`),
-    ilike(courses.subject, `%${query}%`),
+    buildSearchCondition(courses.title, query),
+    buildSearchCondition(courses.description, query),
+    buildSearchCondition(courses.subject, query),
   ];
 
   if (organizationId) {
     conditions.push(eq(courses.organizationId, organizationId));
   }
+
+  const sortColumn = sortBy === 'title' ? courses.title : courses.createdAt;
+  const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn);
 
   return db.select()
     .from(courses)
@@ -25,15 +38,24 @@ export async function searchCourses(query: string, organizationId?: string, limi
       eq(courses.isActive, true),
       or(...conditions)
     ))
+    .orderBy(orderBy)
     .limit(limit)
     .offset(offset);
 }
 
-export async function searchUsers(query: string, organizationId?: string, role?: string, limit = 20, offset = 0) {
+export async function searchUsers(
+  query: string,
+  organizationId?: string,
+  role?: string,
+  limit = 20,
+  offset = 0,
+  sortBy: 'name' | 'email' | 'createdAt' = 'name',
+  sortOrder: 'asc' | 'desc' = 'asc'
+) {
   const conditions = [
-    ilike(users.firstName, `%${query}%`),
-    ilike(users.lastName, `%${query}%`),
-    ilike(users.email, `%${query}%`),
+    buildSearchCondition(users.firstName, query),
+    buildSearchCondition(users.lastName, query),
+    buildSearchCondition(users.email, query),
   ];
 
   if (organizationId) {
@@ -43,6 +65,9 @@ export async function searchUsers(query: string, organizationId?: string, role?:
   if (role) {
     conditions.push(eq(users.role, role));
   }
+
+  const sortColumn = sortBy === 'email' ? users.email : sortBy === 'createdAt' ? users.createdAt : users.firstName;
+  const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn);
 
   return db.select({
     id: users.id,
@@ -55,20 +80,31 @@ export async function searchUsers(query: string, organizationId?: string, role?:
   })
     .from(users)
     .where(or(...conditions))
+    .orderBy(orderBy)
     .limit(limit)
     .offset(offset);
 }
 
-export async function searchAssignments(query: string, organizationId?: string, limit = 20, offset = 0) {
+export async function searchAssignments(
+  query: string,
+  organizationId?: string,
+  limit = 20,
+  offset = 0,
+  sortBy: 'title' | 'dueDate' | 'createdAt' = 'dueDate',
+  sortOrder: 'asc' | 'desc' = 'asc'
+) {
   const conditions = [
-    ilike(assignments.title, `%${query}%`),
-    ilike(assignments.description, `%${query}%`),
+    buildSearchCondition(assignments.title, query),
+    buildSearchCondition(assignments.description, query),
   ];
 
   const courseConditions = [];
   if (organizationId) {
     courseConditions.push(eq(courses.organizationId, organizationId));
   }
+
+  const sortColumn = sortBy === 'title' ? assignments.title : sortBy === 'createdAt' ? assignments.createdAt : assignments.dueDate;
+  const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn);
 
   return db.select({
     id: assignments.id,
@@ -85,29 +121,45 @@ export async function searchAssignments(query: string, organizationId?: string, 
       or(...conditions),
       ...courseConditions
     ))
+    .orderBy(orderBy)
     .limit(limit)
     .offset(offset);
 }
 
-export async function searchOrganizations(query: string, limit = 20, offset = 0) {
+export async function searchOrganizations(
+  query: string,
+  limit = 20,
+  offset = 0,
+  sortBy: 'name' | 'createdAt' = 'name',
+  sortOrder: 'asc' | 'desc' = 'asc'
+) {
+  const sortColumn = sortBy === 'createdAt' ? organizations.createdAt : organizations.name;
+  const orderBy = sortOrder === 'asc' ? asc(sortColumn) : desc(sortColumn);
+
   return db.select()
     .from(organizations)
     .where(and(
       eq(organizations.isActive, true),
       or(
-        ilike(organizations.name, `%${query}%`),
-        ilike(organizations.code, `%${query}%`)
+        buildSearchCondition(organizations.name, query),
+        buildSearchCondition(organizations.code, query)
       )
     ))
+    .orderBy(orderBy)
     .limit(limit)
     .offset(offset);
 }
 
-// Global search across all entities
-export async function globalSearch(query: string, organizationId?: string, limit = 10) {
-  const coursesResult = await searchCourses(query, organizationId, limit, 0);
-  const usersResult = await searchUsers(query, organizationId, undefined, limit, 0);
-  const assignmentsResult = await searchAssignments(query, organizationId, limit, 0);
+export async function globalSearch(
+  query: string,
+  organizationId?: string,
+  limit = 10,
+  sortBy: 'relevance' | 'createdAt' = 'relevance',
+  sortOrder: 'asc' | 'desc' = 'desc'
+) {
+  const coursesResult = await searchCourses(query, organizationId, limit, 0, 'createdAt', sortOrder);
+  const usersResult = await searchUsers(query, organizationId, undefined, limit, 0, 'name', 'asc');
+  const assignmentsResult = await searchAssignments(query, organizationId, limit, 0, 'dueDate', 'asc');
 
   return {
     courses: coursesResult,

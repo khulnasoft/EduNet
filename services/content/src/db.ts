@@ -121,4 +121,109 @@ export async function deleteResource(id: string) {
   return result[0];
 }
 
-import { eq, and } from 'drizzle-orm';
+import { eq, and, desc } from 'drizzle-orm';
+
+// Content Version operations
+export async function createContentVersion(data: {
+  lessonId: string;
+  version: number;
+  title: string;
+  content?: any;
+  createdBy: string;
+}) {
+  const result = await db.insert(schema.contentVersions).values({
+    id: crypto.randomUUID(),
+    lessonId: data.lessonId,
+    version: data.version,
+    title: data.title,
+    content: data.content,
+    createdBy: data.createdBy,
+  }).returning();
+  return result[0];
+}
+
+export async function listContentVersionsByLesson(lessonId: string) {
+  return db.select()
+    .from(schema.contentVersions)
+    .where(eq(schema.contentVersions.lessonId, lessonId))
+    .orderBy(desc(schema.contentVersions.version));
+}
+
+export async function findContentVersion(lessonId: string, version: number) {
+  const result = await db.select()
+    .from(schema.contentVersions)
+    .where(and(
+      eq(schema.contentVersions.lessonId, lessonId),
+      eq(schema.contentVersions.version, version)
+    ));
+  return result[0] || null;
+}
+
+// Media File operations
+export async function createMediaFile(data: {
+  lessonId?: string;
+  courseId?: string;
+  uploadedBy: string;
+  type: string;
+  title: string;
+  description?: string;
+  fileName: string;
+  fileSize: number;
+  mimeType: string;
+  storageKey: string;
+  url: string;
+  duration?: string;
+  dimensions?: string;
+  thumbnailUrl?: string;
+  isPublic?: boolean;
+}) {
+  const result = await db.insert(schema.mediaFiles).values({
+    id: crypto.randomUUID(),
+    lessonId: data.lessonId,
+    courseId: data.courseId,
+    uploadedBy: data.uploadedBy,
+    type: data.type,
+    title: data.title,
+    description: data.description,
+    fileName: data.fileName,
+    fileSize: data.fileSize,
+    mimeType: data.mimeType,
+    storageKey: data.storageKey,
+    url: data.url,
+    duration: data.duration,
+    dimensions: data.dimensions,
+    thumbnailUrl: data.thumbnailUrl,
+    isPublic: data.isPublic || false,
+  }).returning();
+  return result[0];
+}
+
+export async function findMediaFileById(id: string) {
+  const result = await db.select().from(schema.mediaFiles).where(eq(schema.mediaFiles.id, id));
+  return result[0] || null;
+}
+
+export async function listMediaFilesByLesson(lessonId: string) {
+  return db.select()
+    .from(schema.mediaFiles)
+    .where(and(
+      eq(schema.mediaFiles.lessonId, lessonId),
+      eq(schema.mediaFiles.isPublic, true)
+    ))
+    .orderBy(desc(schema.mediaFiles.createdAt));
+}
+
+export async function listMediaFilesByCourse(courseId: string) {
+  return db.select()
+    .from(schema.mediaFiles)
+    .where(and(
+      eq(schema.mediaFiles.courseId, courseId),
+      eq(schema.mediaFiles.isPublic, true)
+    ))
+    .orderBy(desc(schema.mediaFiles.createdAt));
+}
+
+export async function deleteMediaFile(id: string) {
+  const result = await db.delete(schema.mediaFiles).where(eq(schema.mediaFiles.id, id)).returning();
+  return result[0];
+}
