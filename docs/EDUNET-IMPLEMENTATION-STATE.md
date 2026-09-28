@@ -15,7 +15,7 @@ Baseline commit: `ef96741`
 | Install | `pnpm install` | PASS |
 | Typecheck | `pnpm typecheck` | **19/19 tasks PASS** |
 | Lint | `pnpm lint` | **24/24 tasks PASS**, 0 errors, warnings only |
-| Unit tests | `pnpm test` | **19/19 tasks PASS, 51 tests passing** |
+| Unit tests | `pnpm test` | **19/19 tasks PASS, 63 tests passing** |
 | Build | `pnpm build` | **15/15 tasks PASS** (incl. Next.js production build) |
 | Migrations | `drizzle-kit migrate` on PostgreSQL 16 | **PASS — 17 tables created** |
 | Migration constraints | live SQL assertions | **PASS** (unique/FK/NOT NULL all reject bad data) |
@@ -25,7 +25,7 @@ Baseline commit: `ef96741`
 ### Test inventory
 | Package | Tests | Covers |
 |---------|-------|--------|
-| `@edunet/rbac` | 13 | role matrix, admin privileged role, tenant isolation |
+| `@edunet/rbac` | 25 | role matrix, admin privileged role, tenant isolation, bearer auth, refresh-token replay |
 | `@edunet/identity` | 25 | password hashing, JWT lifecycle, token-kind confusion, secret enforcement, middleware |
 | `@edunet/courses` | 7 | course CRUD, teacher ownership, admin override |
 | `@edunet/enrollments` | 6 | self-enrollment, cross-student rejection, duplicate prevention |
@@ -46,6 +46,7 @@ Baseline commit: `ef96741`
 | 8 | **High** | `import '@edunet/database'` opened a DB connection at import time and crashed on missing env (`postgres://undefined:...`) | Lazy `getDb()`; `resolveConnectionString()` names the missing vars |
 | 9 | **Medium** | A test asserted 400 for invalid input but the schema mock returned data unchanged, so it could never fail | Mock now enforces required fields; assertion is meaningful |
 | 10 | **Medium** | 6 packages declared `test: jest` with zero test files — false green signal | Scripts removed until real tests exist |
+| 11 | **High** | 12 services inlined their own `authenticate`/`authorize` in `routes.ts`, each reading `JWT_SECRET` with the hardcoded fallback and with drifted admin semantics (531 duplicated lines) | All migrated to `@edunet/rbac`; hardcoded secret removed from service source |
 
 ---
 
@@ -55,7 +56,7 @@ Baseline commit: `ef96741`
 |-----------|--------|----------------|
 | Architecture | VERIFIED | monorepo builds; shared `@edunet/rbac`; lazy DB boundary |
 | Identity & Auth | VERIFIED (hardened) | 25 tests; secrets + token-kind enforced |
-| RBAC & Multi-tenancy | PARTIAL | canonical helper done; **per-service inline copies remain (10 files)** |
+| RBAC & Multi-tenancy | PARTIAL | canonical middleware in use across all 12 services + 25 tests; per-handler `organizationId` scoping still inconsistent |
 | Database & Migrations | VERIFIED | 17 tables migrate; constraints proven |
 | LMS core | PARTIAL | CRUD + ownership; no rubrics/resubmission |
 | Assessment | PARTIAL | auto-grading for 2 objective types; 5 types missing |
@@ -84,12 +85,12 @@ Baseline commit: `ef96741`
 
 ## Next Priority (highest risk first)
 
-1. Replace 10 duplicated inline `authenticate`/`authorize` with `@edunet/rbac` (consistency + removes hardcoded secret path).
-2. Implement the storage adapter for real (currently returns fake S3 URLs; signed URLs are not signed).
-3. Add tenant-scoped query helpers so `organizationId` is enforced in the data layer, not only in handlers.
-4. E2E coverage of the primary journey against a real database.
-5. Observability: structured logging, `/health`, `/ready`.
-6. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
+1. Implement the storage adapter for real (currently returns fake S3 URLs; signed URLs are not signed).
+2. Enforce `organizationId` in the data layer so tenant scoping cannot be forgotten in a handler.
+3. E2E coverage of the primary journey against a real database.
+4. Observability: structured logging, `/health`, `/ready`.
+5. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
+6. Resolve the 28 Dependabot alerts (2 critical).
 
 ---
 
