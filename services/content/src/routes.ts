@@ -17,6 +17,13 @@ import {
   updateResourceHandler,
   deleteResourceHandler,
 } from './handlers';
+import {
+  uploadMediaHandler,
+  listMediaHandler,
+  getMediaAccessHandler,
+  deleteMediaHandler,
+} from './media-handlers';
+import { getStorage, verifySignedUrl, StorageError } from './storage';
 
 
 export function registerRoutes(app: any) {
@@ -42,6 +49,47 @@ export function registerRoutes(app: any) {
   router.get('/resources/:id', authenticate, getResourceHandler);
   router.put('/resources/:id', authenticate, authorize('teacher', 'admin'), updateResourceHandler);
   router.delete('/resources/:id', authenticate, authorize('teacher', 'admin'), deleteResourceHandler);
+
+  // Media routes. Uploads are teacher/admin owned; access URLs are signed.
+  router.post('/media', authenticate, authorize('teacher', 'admin'), uploadMediaHandler);
+  router.get('/media', authenticate, listMediaHandler);
+  router.get('/media/:id/access', authenticate, getMediaAccessHandler);
+  router.delete('/media/:id', authenticate, authorize('teacher', 'admin'), deleteMediaHandler);
+
+  // Signed object delivery. Access is granted by signature + expiry only,
+  // because this URL is handed to a browser that may not send a bearer token.
+  router.get('/files/*', async (req: any, res: any) => {
+    const key = decodeURIComponent(String(req.params[0] ?? ''));
+    const expires = Number(req.query.expires);
+    const signature = String(req.query.signature ?? '');
+
+    const verdict = (() => {
+      try {
+        return verifySignedUrl(key, expires, signature);
+      } catch {
+        return { valid: false as const, reason: 'BAD_SIGNATURE' as const };
+      }
+    })();
+
+    if (!verdict.valid) {
+      return res.status(403).json({
+        error: verdict.reason === 'EXPIRED' ? 'Link has expired' : 'Invalid link',
+      });
+    }
+
+    try {
+      const body = await getStorage().get(key);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      res.setHeader('X-Content-Type-Options', 'nosniff');
+      res.setHeader('Cache-Control', 'private, no-store');
+      return res.send(body);
+    } catch (error) {
+      if (error instanceof StorageError && error.code === 'NOT_FOUND') {
+        return res.status(404).json({ error: 'File not found' });
+      }
+      return res.status(500).json({ error: 'Unable to read file' });
+    }
+  });
 
   app.use('/api/content', router);
 }

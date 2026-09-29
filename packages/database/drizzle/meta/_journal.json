@@ -8,6 +8,13 @@
       "when": 1790627676589,
       "tag": "0000_happy_switch",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1790698489691,
+      "tag": "0001_silly_excalibur",
+      "breakpoints": true
     }
   ]
 }

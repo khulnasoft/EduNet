@@ -121,7 +121,7 @@ export async function deleteResource(id: string) {
   return result[0];
 }
 
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, isNull, sql } from 'drizzle-orm';
 
 // Content Version operations
 export async function createContentVersion(data: {
@@ -161,8 +161,9 @@ export async function findContentVersion(lessonId: string, version: number) {
 
 // Media File operations
 export async function createMediaFile(data: {
+  id: string;
   lessonId?: string;
-  courseId?: string;
+  courseId: string;
   uploadedBy: string;
   type: string;
   title: string;
@@ -171,14 +172,14 @@ export async function createMediaFile(data: {
   fileSize: number;
   mimeType: string;
   storageKey: string;
-  url: string;
   duration?: string;
   dimensions?: string;
   thumbnailUrl?: string;
   isPublic?: boolean;
 }) {
+  // No permanent public URL is persisted; access URLs are signed per request.
   const result = await db.insert(schema.mediaFiles).values({
-    id: crypto.randomUUID(),
+    id: data.id,
     lessonId: data.lessonId,
     courseId: data.courseId,
     uploadedBy: data.uploadedBy,
@@ -189,7 +190,6 @@ export async function createMediaFile(data: {
     fileSize: data.fileSize,
     mimeType: data.mimeType,
     storageKey: data.storageKey,
-    url: data.url,
     duration: data.duration,
     dimensions: data.dimensions,
     thumbnailUrl: data.thumbnailUrl,
@@ -199,31 +199,62 @@ export async function createMediaFile(data: {
 }
 
 export async function findMediaFileById(id: string) {
-  const result = await db.select().from(schema.mediaFiles).where(eq(schema.mediaFiles.id, id));
+  const result = await db
+    .select()
+    .from(schema.mediaFiles)
+    .where(and(eq(schema.mediaFiles.id, id), isNull(schema.mediaFiles.deletedAt)));
   return result[0] || null;
 }
 
-export async function listMediaFilesByLesson(lessonId: string) {
-  return db.select()
+export async function listMediaFilesByLesson(
+  lessonId: string,
+  limit = 50,
+  offset = 0,
+) {
+  return db
+    .select()
     .from(schema.mediaFiles)
     .where(and(
       eq(schema.mediaFiles.lessonId, lessonId),
-      eq(schema.mediaFiles.isPublic, true)
+      isNull(schema.mediaFiles.deletedAt)
     ))
-    .orderBy(desc(schema.mediaFiles.createdAt));
+    .orderBy(desc(schema.mediaFiles.createdAt))
+    .limit(limit)
+    .offset(offset);
 }
 
-export async function listMediaFilesByCourse(courseId: string) {
-  return db.select()
+export async function listMediaFilesByCourse(
+  courseId: string,
+  limit = 50,
+  offset = 0,
+) {
+  return db
+    .select()
     .from(schema.mediaFiles)
     .where(and(
       eq(schema.mediaFiles.courseId, courseId),
-      eq(schema.mediaFiles.isPublic, true)
+      isNull(schema.mediaFiles.deletedAt)
     ))
-    .orderBy(desc(schema.mediaFiles.createdAt));
+    .orderBy(desc(schema.mediaFiles.createdAt))
+    .limit(limit)
+    .offset(offset);
 }
 
+export async function incrementMediaDownloadCount(id: string) {
+  const [row] = await db
+    .update(schema.mediaFiles)
+    .set({ downloadCount: sql`${schema.mediaFiles.downloadCount} + 1` })
+    .where(eq(schema.mediaFiles.id, id))
+    .returning();
+  return row;
+}
+
+/** Soft delete: media rows are retained so grade and audit history stays intact. */
 export async function deleteMediaFile(id: string) {
-  const result = await db.delete(schema.mediaFiles).where(eq(schema.mediaFiles.id, id)).returning();
+  const result = await db
+    .update(schema.mediaFiles)
+    .set({ deletedAt: new Date() })
+    .where(eq(schema.mediaFiles.id, id))
+    .returning();
   return result[0];
 }

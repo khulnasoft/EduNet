@@ -6,7 +6,8 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch",
-    "lint": "eslint . --ext .ts"
+    "lint": "eslint . --ext .ts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@edunet/database": "workspace:*",
@@ -20,9 +21,10 @@
     "@types/express": "^4.17.17",
     "@types/jsonwebtoken": "^9.0.0",
     "@types/node": "^20.4.2",
-    "typescript": "^5.1.6",
-    "eslint": "^8.45.0",
     "@typescript-eslint/eslint-plugin": "^6.0.0",
-    "@typescript-eslint/parser": "^6.0.0"
+    "@typescript-eslint/parser": "^6.0.0",
+    "eslint": "^8.45.0",
+    "typescript": "^5.1.6",
+    "vitest": "^2.0.0"
   }
 }

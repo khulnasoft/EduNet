@@ -15,7 +15,7 @@ Baseline commit: `ef96741`
 | Install | `pnpm install` | PASS |
 | Typecheck | `pnpm typecheck` | **19/19 tasks PASS** |
 | Lint | `pnpm lint` | **24/24 tasks PASS**, 0 errors, warnings only |
-| Unit tests | `pnpm test` | **19/19 tasks PASS, 63 tests passing** |
+| Unit tests | `pnpm test` | **20/20 tasks PASS, 85 tests passing** |
 | Build | `pnpm build` | **15/15 tasks PASS** (incl. Next.js production build) |
 | Migrations | `drizzle-kit migrate` on PostgreSQL 16 | **PASS — 17 tables created** |
 | Migration constraints | live SQL assertions | **PASS** (unique/FK/NOT NULL all reject bad data) |
@@ -29,6 +29,7 @@ Baseline commit: `ef96741`
 | `@edunet/identity` | 25 | password hashing, JWT lifecycle, token-kind confusion, secret enforcement, middleware |
 | `@edunet/courses` | 7 | course CRUD, teacher ownership, admin override |
 | `@edunet/enrollments` | 6 | self-enrollment, cross-student rejection, duplicate prevention |
+| `@edunet/content` | 22 | media mime allowlist, key generation, **path traversal**, signed URL issue/verify, upload limits |
 
 ---
 
@@ -47,6 +48,10 @@ Baseline commit: `ef96741`
 | 9 | **Medium** | A test asserted 400 for invalid input but the schema mock returned data unchanged, so it could never fail | Mock now enforces required fields; assertion is meaningful |
 | 10 | **Medium** | 6 packages declared `test: jest` with zero test files — false green signal | Scripts removed until real tests exist |
 | 11 | **High** | 12 services inlined their own `authenticate`/`authorize` in `routes.ts`, each reading `JWT_SECRET` with the hardcoded fallback and with drifted admin semantics (531 duplicated lines) | All migrated to `@edunet/rbac`; hardcoded secret removed from service source |
+| 12 | **Critical** | Storage layer was fake production behaviour: S3 provider returned fabricated `s3://` URLs, an empty download body, a no-op delete and `exists` hardcoded to `true`; module was orphaned (nothing imported it) | Fake provider deleted. Real filesystem provider with allowlisted MIME types, 25MB cap, generated keys, and HMAC-signed expiring URLs. 22 tests |
+| 13 | **High** | **Path traversal** in the local storage provider: `path.join(basePath, userKey)` allowed `../` to escape the storage root | Keys are `<scope>/<uuid>.<ext>` from generated UUIDs, regex-validated, plus a resolved-path containment check |
+| 14 | **High** | `media_files` table existed in schema and migrations but **had no API at all** — the earlier "media metadata" completion claim was untrue | Implemented upload/list/access/delete with teacher course-ownership checks, pagination, soft delete and download counting |
+| 15 | **High** | `media_files.url` was `NOT NULL`, forcing a permanent public URL to be stored, contradicting the private-media rule | Column made nullable (migration `0001`); access URLs are signed per request |
 
 ---
 
@@ -60,7 +65,7 @@ Baseline commit: `ef96741`
 | Database & Migrations | VERIFIED | 17 tables migrate; constraints proven |
 | LMS core | PARTIAL | CRUD + ownership; no rubrics/resubmission |
 | Assessment | PARTIAL | auto-grading for 2 objective types; 5 types missing |
-| Content | PARTIAL | storage abstraction is a **non-functional stub** |
+| Content | PARTIAL | lessons, resources, progress, **media upload/signed access (new)**, versioning; multipart upload still pending |
 | Student workflow | PARTIAL | pages exist, untested E2E |
 | Teacher workflow | PARTIAL | pages exist, untested E2E |
 | Parent | PARTIAL | relationship auth present; UI absent |
@@ -85,12 +90,12 @@ Baseline commit: `ef96741`
 
 ## Next Priority (highest risk first)
 
-1. Implement the storage adapter for real (currently returns fake S3 URLs; signed URLs are not signed).
-2. Enforce `organizationId` in the data layer so tenant scoping cannot be forgotten in a handler.
-3. E2E coverage of the primary journey against a real database.
-4. Observability: structured logging, `/health`, `/ready`.
-5. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
-6. Resolve the 28 Dependabot alerts (2 critical).
+1. Enforce `organizationId` in the data layer so tenant scoping cannot be forgotten in a handler.
+2. E2E coverage of the primary journey against a real database.
+3. Observability: structured logging, `/health`, `/ready`.
+4. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
+5. Resolve the 28 Dependabot alerts (2 critical).
+6. Multipart upload for media (currently base64 JSON bodies).
 
 ---
 

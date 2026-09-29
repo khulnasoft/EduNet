@@ -90,7 +90,9 @@ export const mediaFiles = pgTable('media_files', {
   fileSize: integer('file_size').notNull(),
   mimeType: text('mime_type').notNull(),
   storageKey: text('storage_key').notNull(),
-  url: text('url').notNull(),
+  // No permanent public URL is stored: access URLs are signed and minted
+  // per-request so private media cannot be reached by guessing a path.
+  url: text('url'),
   duration: text('duration'), // for audio/video: e.g., "5m 30s"
   dimensions: text('dimensions'), // for images: e.g., "1920x1080"
   thumbnailUrl: text('thumbnail_url'),
