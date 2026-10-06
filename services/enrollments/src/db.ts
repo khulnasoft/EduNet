@@ -39,7 +39,15 @@ export async function findCourseById(id: string, organizationId: string) {
 export async function findEnrollmentById(id: string, organizationId: string) {
   const db = getDb();
   const result = await db
-    .select({ enrollment: enrollments })
+    .select({
+      enrollment: enrollments,
+      student: {
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      },
+    })
     .from(enrollments)
     .innerJoin(courses, eq(enrollments.courseId, courses.id))
     .innerJoin(users, eq(enrollments.studentId, users.id))
@@ -103,7 +111,15 @@ export async function listEnrollmentsByCourse(
 ) {
   const db = getDb();
   const result = await db
-    .select({ enrollment: enrollments })
+    .select({
+      enrollment: enrollments,
+      student: {
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        email: users.email,
+      },
+    })
     .from(enrollments)
     .innerJoin(courses, eq(enrollments.courseId, courses.id))
     .innerJoin(users, eq(enrollments.studentId, users.id))
@@ -116,7 +132,7 @@ export async function listEnrollmentsByCourse(
     )
     .limit(limit)
     .offset(offset);
-  return result.map(({ enrollment }) => enrollment);
+  return result.map(({ enrollment, student }) => ({ ...enrollment, student }));
 }
 
 export async function createEnrollment(data: {

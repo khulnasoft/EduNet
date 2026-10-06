@@ -20,7 +20,7 @@ Baseline commit: `ef96741`
 | Migrations | `drizzle-kit migrate` on PostgreSQL 16 | **PASS — 17 tables created** |
 | Migration constraints | live SQL assertions | **PASS** (unique/FK/NOT NULL all reject bad data) |
 | PostgreSQL integration | `pnpm --filter @edunet/database test:integration` | **5 tests PASS**, including cross-organization lesson, progress, resource, and media isolation |
-| E2E | `pnpm --filter @edunet/web test:e2e` | **1 teacher/student course and progress journey passed against PostgreSQL 16** |
+| E2E | `pnpm --filter @edunet/web test:e2e` | **1 teacher/student journey passed against PostgreSQL 16, including assignment creation, submission, grading, feedback, and roster display** |
 | Security scan | `gh api dependabot/alerts` | **Critical: 0 in the dependency tree.** Vitest 4.1.11 removes `tinypool` entirely, clearing GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr (prototype pollution → RCE). Remaining: `drizzle-orm` identifier escaping (HIGH, **not reachable** — see deferred), plus transitive vite/esbuild/postcss/minimatch |
 
 ### Test inventory
@@ -73,8 +73,8 @@ Baseline commit: `ef96741`
 | LMS core | PARTIAL | CRUD + ownership; no rubrics/resubmission |
 | Assessment | PARTIAL | auto-grading for 2 objective types; 5 types missing |
 | Content | PARTIAL | lessons, resources, progress, **media upload/signed access (new)**, versioning; multipart upload still pending |
-| Student workflow | PARTIAL | Assignment submission UI and grade/feedback display implemented; PostgreSQL-backed browser verification pending |
-| Teacher workflow | PARTIAL | Assignment creation and submission review/grading UI implemented; PostgreSQL-backed browser verification pending |
+| Student workflow | PARTIAL | PostgreSQL-backed browser journey verifies registration, enrollment, lesson completion, assignment submission, and returned grade/feedback |
+| Teacher workflow | PARTIAL | PostgreSQL-backed browser journey verifies course/lesson/assignment creation, enrolled-student roster, and grading |
 | Parent | PARTIAL | relationship auth present; UI absent |
 | Notifications | PARTIAL | CRUD + event bus; no delivery adapters |
 | Search | PARTIAL | `ILIKE` based; no ranking/facets |
@@ -97,9 +97,8 @@ Baseline commit: `ef96741`
 
 ## Next Priority (highest risk first)
 
-1. Run PostgreSQL migration and browser coverage for student assignment submission and teacher grading when the database service is available.
-2. Add observability: structured logging, `/health`, `/ready`.
-3. Replace `bcryptjs` with native bcrypt or argon2id (~2.7s per login today).
+1. Add observability: structured logging, `/health`, `/ready`.
+2. Replace `bcryptjs` with native bcrypt or argon2id (~2.7s per login today).
 
 ### Deferred with justification
 

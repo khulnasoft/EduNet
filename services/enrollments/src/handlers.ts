@@ -103,6 +103,12 @@ export async function listEnrollmentsHandler(req: AuthRequest, res: Response) {
       if (!course) {
         return res.status(404).json({ error: 'Course not found' });
       }
+      if (req.user?.role === 'teacher' && course.teacherId !== req.user.id) {
+        return res.status(403).json({ error: 'You can only view rosters for your own courses' });
+      }
+      if (req.user?.role !== 'teacher' && req.user?.role !== 'admin') {
+        return res.status(403).json({ error: 'Teacher access is required to view a course roster' });
+      }
       result = await listEnrollmentsByCourse(courseId, organizationId, limit, offset);
     } else {
       return res.status(400).json({ error: 'studentId or courseId is required' });

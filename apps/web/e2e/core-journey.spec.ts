@@ -84,6 +84,7 @@ test.describe('teacher and student course journey against PostgreSQL', () => {
 
   test('teacher creates course and lesson, student enrolls and opens the lesson', async ({ browser }) => {
     const teacher = await browser.newPage();
+    teacher.on('pageerror', error => console.error('Teacher browser error:', error));
     await register(teacher, 'Taylor', 'teacher');
     await teacher.goto('/teacher/courses/new');
     await teacher.getByLabel('Course Title *').fill('E2E Algebra');
@@ -112,6 +113,7 @@ test.describe('teacher and student course journey against PostgreSQL', () => {
     await expect(teacher.getByText('Solve for x')).toBeVisible();
 
     const student = await browser.newPage();
+    student.on('pageerror', error => console.error('Student browser error:', error));
     await register(student, 'Sam', 'student');
     await student.goto('/courses');
     await student.getByText('E2E Algebra').waitFor();
@@ -134,6 +136,7 @@ test.describe('teacher and student course journey against PostgreSQL', () => {
     await expect(student.getByText('Submitted', { exact: true })).toBeVisible();
 
     await teacher.goto(`/teacher/courses/${courseId}`);
+    await expect(teacher.getByText('Sam Journey')).toBeVisible();
     await teacher.getByRole('link', { name: 'Review submissions' }).click();
     await expect(teacher.getByText('2x + 3 = 7, so x = 2.')).toBeVisible();
     await teacher.getByLabel(/Grade \/ 25/).fill('23');

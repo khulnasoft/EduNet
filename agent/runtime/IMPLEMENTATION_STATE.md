@@ -49,14 +49,15 @@ ACTIVE
 - Real PostgreSQL integration suite: 5 tests covering core LMS persistence, foreign keys, and cross-organization user/assignment/submission/enrollment/assessment/content access, including content progress, resources, and media
 - Full monorepo unit suite: 85 tests passing; all build tasks required by `pnpm test` passed
 - GitHub Actions CI workflow runs frozen install, PostgreSQL migration/integration, lint, typecheck, unit/build, and browser E2E on pushes and pull requests
-- PostgreSQL-backed Playwright journey passes: teacher registers and creates course/lesson; student registers, enrolls, opens the lesson, and records completion progress
+- PostgreSQL-backed Playwright journey passes: teacher registers and creates course/lesson/assignment, sees the enrolled student roster, reviews and grades a submission; student registers, enrolls, completes the lesson, submits work, and sees grade/feedback
 - Shared UI inputs and registration role control now expose programmatically associated labels after E2E surfaced missing label associations
 - Teacher assignment creation and submission review/grading pages implemented; student assignment submission and grade feedback display wired end to end
 - Assignment point totals and submission grades corrected from unintended PostgreSQL serial sequences to integer values; migration `0002_assignment_grading` added
+- Course roster responses include student details only on organization-scoped course roster reads; teachers are restricted to their own course rosters and admins retain organization access
 - Grade input is validated as a non-negative whole number bounded by the assignment maximum; submission content and feedback are length-validated
 
 ## Current Gate
-10 — Production Readiness (assignment/grading validation pending PostgreSQL availability)
+10 — Production Readiness (assignment/grading journey verified against PostgreSQL 16)
 
 ## Completion Rule
 Do not mark a gate complete unless implementation and validation support it.
