@@ -42,8 +42,32 @@ function resolveSecret(): string {
   return secret;
 }
 
+/**
+ * bcrypt work factor.
+ *
+ * Production defaults to 10, which is the current OWASP-recommended balance.
+ * `bcryptjs` is a pure-JS implementation and costs roughly 2.7s per hash at
+ * cost 10 on a typical container, so the factor is configurable: automated
+ * tests set BCRYPT_COST=4 because they verify the hash/verify round-trip, not
+ * the work factor itself.
+ *
+ * NOTE: at cost 10 every login attempt burns seconds of CPU. This is a
+ * deliberate trade-off against brute-force resistance and is a candidate for
+ * migration to native bcrypt or argon2id. See docs/EDUNET-IMPLEMENTATION-STATE.md.
+ */
+export function bcryptCost(): number {
+  const raw = process.env.BCRYPT_COST;
+  if (raw) {
+    const parsed = Number.parseInt(raw, 10);
+    if (Number.isInteger(parsed) && parsed >= 4 && parsed <= 15) {
+      return parsed;
+    }
+  }
+  return 10;
+}
+
 export async function hashPassword(password: string): Promise<string> {
-  return bcrypt.hash(password, 10);
+  return bcrypt.hash(password, bcryptCost());
 }
 
 export async function verifyPassword(password: string, hash: string): Promise<boolean> {

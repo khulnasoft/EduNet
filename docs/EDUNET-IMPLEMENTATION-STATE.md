@@ -20,7 +20,7 @@ Baseline commit: `ef96741`
 | Migrations | `drizzle-kit migrate` on PostgreSQL 16 | **PASS — 17 tables created** |
 | Migration constraints | live SQL assertions | **PASS** (unique/FK/NOT NULL all reject bad data) |
 | E2E | — | MISSING |
-| Security scan | — | NOT RUN (28 known Dependabot alerts) |
+| Security scan | `gh api dependabot/alerts` | **Critical: 0** (CVE-2026-47429 fixed). Remaining alerts are `drizzle-orm` SQL-injection-in-identifier (HIGH, **not reachable** — see below) plus transitive vite/esbuild/postcss/minimatch |
 
 ### Test inventory
 | Package | Tests | Covers |
@@ -52,6 +52,9 @@ Baseline commit: `ef96741`
 | 13 | **High** | **Path traversal** in the local storage provider: `path.join(basePath, userKey)` allowed `../` to escape the storage root | Keys are `<scope>/<uuid>.<ext>` from generated UUIDs, regex-validated, plus a resolved-path containment check |
 | 14 | **High** | `media_files` table existed in schema and migrations but **had no API at all** — the earlier "media metadata" completion claim was untrue | Implemented upload/list/access/delete with teacher course-ownership checks, pagination, soft delete and download counting |
 | 15 | **High** | `media_files.url` was `NOT NULL`, forcing a permanent public URL to be stored, contradicting the private-media rule | Column made nullable (migration `0001`); access URLs are signed per request |
+| 16 | **Critical** | **CVE-2026-47429** — Vitest `< 3.2.6` allows arbitrary file read/execute when the Vitest UI server is listening | Vitest raised to `^3.2.6`; unused `@vitest/ui` removed entirely; dead Jest toolchain (`jest`, `ts-jest`, `jest-environment-node`, `@types/jest`, `jest.config.js`) deleted |
+| 17 | **High** | Vite `< 6.4.3` advisory (CVE via Vite dev server) | Root `pnpm.overrides` pins `vite ^6.4.3` and `esbuild ^0.25.0` |
+| 18 | **Medium** | `bcryptjs` at cost 10 takes ~2.7s per operation in pure JS — every login burns seconds of CPU, and the auth suite spent 35s hashing | `BCRYPT_COST` is configurable (default 10, production-safe); tests set cost 4. **Production note: migrate to native bcrypt or argon2id** |
 
 ---
 
@@ -90,12 +93,23 @@ Baseline commit: `ef96741`
 
 ## Next Priority (highest risk first)
 
-1. Enforce `organizationId` in the data layer so tenant scoping cannot be forgotten in a handler.
-2. E2E coverage of the primary journey against a real database.
-3. Observability: structured logging, `/health`, `/ready`.
-4. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
-5. Resolve the 28 Dependabot alerts (2 critical).
-6. Multipart upload for media (currently base64 JSON bodies).
+1. Add a **real database integration test**. Every service test currently mocks `./db`, so ORM regressions are invisible. This is the safety net needed for the next items.
+2. Enforce `organizationId` in the data layer so tenant scoping cannot be forgotten in a handler.
+3. E2E coverage of the primary journey against a real database.
+4. Observability: structured logging, `/health`, `/ready`.
+5. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
+6. Replace `bcryptjs` with native bcrypt or argon2id (~2.7s per login today).
+
+### Deferred with justification
+
+**CVE-2026-39356 (drizzle-orm SQL injection via identifier escaping, HIGH).**
+Not currently exploitable: the advisory affects `sql.identifier()` and `.as()`
+when fed untrusted input, and a repo-wide search finds **no dynamic identifier
+or alias construction** — every query references static schema columns.
+Upgrading `drizzle-orm` 0.33 → 0.45.2 spans twelve minor versions with breaking
+API changes (notably `relations()`), and no test currently exercises the real
+ORM, so an upgrade would be unverifiable and risky. Scheduled immediately
+after the integration test lands.
 
 ---
 
