@@ -8,11 +8,5 @@ export default defineConfig({
     exclude: ['**/node_modules/**', '**/dist/**', '**/.next/**'],
     environment: 'node',
     testTimeout: 10000,
-    // Password hashing is exercised here; the work factor is lowered in-test
-    // rather than relaxing assertions, so the round-trip is still verified.
-    env: {
-      BCRYPT_COST: '4',
-      NODE_ENV: 'test',
-    },
   },
 });
