@@ -17,6 +17,15 @@ export function getDb() {
   return db;
 }
 
+export async function closeDb(): Promise<void> {
+  if (client) {
+    const activeClient = client;
+    client = null;
+    db = null;
+    await activeClient.end();
+  }
+}
+
 export async function findUserByEmail(email: string) {
   const db = getDb();
   const result = await db.select().from(users).where(eq(users.email, email));

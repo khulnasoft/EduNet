@@ -15,6 +15,13 @@
       "when": 1790698489691,
       "tag": "0001_silly_excalibur",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791302400000,
+      "tag": "0002_assignment_grading",
+      "breakpoints": true
     }
   ]
 }

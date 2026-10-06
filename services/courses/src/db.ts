@@ -1,5 +1,5 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
-import { courses, enrollments } from '@edunet/database';
+import { courses, enrollments, users } from '@edunet/database';
 import { eq, and } from 'drizzle-orm';
 import postgres from 'postgres';
 
@@ -8,29 +8,57 @@ let db: ReturnType<typeof drizzle> | null = null;
 
 export function getDb() {
   if (!db) {
-    const connectionString = process.env.DATABASE_URL || 
+    const connectionString =
+      process.env.DATABASE_URL ||
       `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
-    
+
     client = postgres(connectionString);
     db = drizzle(client);
   }
   return db;
 }
 
-export async function findCourseById(id: string) {
+export async function closeDb(): Promise<void> {
+  if (client) {
+    const activeClient = client;
+    client = null;
+    db = null;
+    await activeClient.end();
+  }
+}
+
+export async function findCourseById(id: string, organizationId: string) {
   const db = getDb();
-  const result = await db.select().from(courses).where(eq(courses.id, id));
+  const result = await db
+    .select()
+    .from(courses)
+    .where(and(eq(courses.id, id), eq(courses.organizationId, organizationId)));
   return result[0] || null;
 }
 
 export async function listCoursesByOrganization(organizationId: string, limit = 50, offset = 0) {
   const db = getDb();
-  return db.select().from(courses).where(eq(courses.organizationId, organizationId)).limit(limit).offset(offset);
+  return db
+    .select()
+    .from(courses)
+    .where(eq(courses.organizationId, organizationId))
+    .limit(limit)
+    .offset(offset);
 }
 
-export async function listCoursesByTeacher(teacherId: string, limit = 50, offset = 0) {
+export async function listCoursesByTeacher(
+  organizationId: string,
+  teacherId: string,
+  limit = 50,
+  offset = 0
+) {
   const db = getDb();
-  return db.select().from(courses).where(eq(courses.teacherId, teacherId)).limit(limit).offset(offset);
+  return db
+    .select()
+    .from(courses)
+    .where(and(eq(courses.organizationId, organizationId), eq(courses.teacherId, teacherId)))
+    .limit(limit)
+    .offset(offset);
 }
 
 export async function createCourse(data: {
@@ -42,28 +70,50 @@ export async function createCourse(data: {
   teacherId: string;
 }) {
   const db = getDb();
-  const [course] = await db.insert(courses).values({
-    id: crypto.randomUUID(),
-    organizationId: data.organizationId,
-    title: data.title,
-    description: data.description,
-    subject: data.subject,
-    grade: data.grade,
-    teacherId: data.teacherId,
-    isActive: true,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  }).returning();
+  const [teacher] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(
+      and(
+        eq(users.id, data.teacherId),
+        eq(users.organizationId, data.organizationId),
+        eq(users.role, 'teacher')
+      )
+    )
+    .limit(1);
+  if (!teacher) {
+    throw new Error('Course teacher must belong to the authenticated organization');
+  }
+
+  const [course] = await db
+    .insert(courses)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId: data.organizationId,
+      title: data.title,
+      description: data.description,
+      subject: data.subject,
+      grade: data.grade,
+      teacherId: data.teacherId,
+      isActive: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    })
+    .returning();
   return course;
 }
 
-export async function updateCourse(id: string, data: {
-  title?: string;
-  description?: string;
-  subject?: string;
-  grade?: string;
-  isActive?: boolean;
-}) {
+export async function updateCourse(
+  id: string,
+  organizationId: string,
+  data: {
+    title?: string;
+    description?: string;
+    subject?: string;
+    grade?: string;
+    isActive?: boolean;
+  }
+) {
   const db = getDb();
   const [course] = await db
     .update(courses)
@@ -71,19 +121,26 @@ export async function updateCourse(id: string, data: {
       ...data,
       updatedAt: new Date(),
     })
-    .where(eq(courses.id, id))
+    .where(and(eq(courses.id, id), eq(courses.organizationId, organizationId)))
     .returning();
   return course;
 }
 
-export async function deleteCourse(id: string) {
+export async function deleteCourse(id: string, organizationId: string) {
   const db = getDb();
-  const [course] = await db.delete(courses).where(eq(courses.id, id)).returning();
+  const [course] = await db
+    .delete(courses)
+    .where(and(eq(courses.id, id), eq(courses.organizationId, organizationId)))
+    .returning();
   return course;
 }
 
-export async function getCourseEnrollmentCount(courseId: string) {
+export async function getCourseEnrollmentCount(courseId: string, organizationId: string) {
   const db = getDb();
-  const result = await db.select().from(enrollments).where(eq(enrollments.courseId, courseId));
+  const result = await db
+    .select({ id: enrollments.id })
+    .from(enrollments)
+    .innerJoin(courses, eq(enrollments.courseId, courses.id))
+    .where(and(eq(courses.id, courseId), eq(courses.organizationId, organizationId)));
   return result.length;
 }

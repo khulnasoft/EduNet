@@ -1,6 +1,6 @@
 # EduNet Implementation State
 
-Last updated: 2026-09-29
+Last updated: 2026-10-06
 Baseline commit: `ef96741`
 
 ## Status Legend
@@ -19,7 +19,8 @@ Baseline commit: `ef96741`
 | Build | `pnpm build` | **15/15 tasks PASS** (incl. Next.js production build) |
 | Migrations | `drizzle-kit migrate` on PostgreSQL 16 | **PASS — 17 tables created** |
 | Migration constraints | live SQL assertions | **PASS** (unique/FK/NOT NULL all reject bad data) |
-| E2E | — | MISSING |
+| PostgreSQL integration | `pnpm --filter @edunet/database test:integration` | **5 tests PASS**, including cross-organization lesson, progress, resource, and media isolation |
+| E2E | `pnpm --filter @edunet/web test:e2e` | **1 teacher/student course and progress journey passed against PostgreSQL 16** |
 | Security scan | `gh api dependabot/alerts` | **Critical: 0 in the dependency tree.** Vitest 4.1.11 removes `tinypool` entirely, clearing GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr (prototype pollution → RCE). Remaining: `drizzle-orm` identifier escaping (HIGH, **not reachable** — see deferred), plus transitive vite/esbuild/postcss/minimatch |
 
 ### Test inventory
@@ -67,13 +68,13 @@ Baseline commit: `ef96741`
 |-----------|--------|----------------|
 | Architecture | VERIFIED | monorepo builds; shared `@edunet/rbac`; lazy DB boundary |
 | Identity & Auth | VERIFIED (hardened) | 25 tests; secrets + token-kind enforced |
-| RBAC & Multi-tenancy | PARTIAL | canonical middleware in use across all 12 services + 25 tests; per-handler `organizationId` scoping still inconsistent |
+| RBAC & Multi-tenancy | PARTIAL | canonical middleware in use across all 12 services + 25 tests; courses, users, assignments, submissions, enrollments, assessments, and content scope reads and mutations to the authenticated organization; PostgreSQL integration coverage confirms tenant isolation across these domains |
 | Database & Migrations | VERIFIED | 17 tables migrate; constraints proven |
 | LMS core | PARTIAL | CRUD + ownership; no rubrics/resubmission |
 | Assessment | PARTIAL | auto-grading for 2 objective types; 5 types missing |
 | Content | PARTIAL | lessons, resources, progress, **media upload/signed access (new)**, versioning; multipart upload still pending |
-| Student workflow | PARTIAL | pages exist, untested E2E |
-| Teacher workflow | PARTIAL | pages exist, untested E2E |
+| Student workflow | PARTIAL | Assignment submission UI and grade/feedback display implemented; PostgreSQL-backed browser verification pending |
+| Teacher workflow | PARTIAL | Assignment creation and submission review/grading UI implemented; PostgreSQL-backed browser verification pending |
 | Parent | PARTIAL | relationship auth present; UI absent |
 | Notifications | PARTIAL | CRUD + event bus; no delivery adapters |
 | Search | PARTIAL | `ILIKE` based; no ranking/facets |
@@ -87,7 +88,7 @@ Baseline commit: `ef96741`
 | Admin / Institution | MISSING | — |
 | Integrations | MISSING | — |
 | Observability | MISSING | no logging, health, metrics |
-| CI/CD | MISSING | — |
+| CI/CD | PARTIAL | GitHub Actions gates frozen install, migrations, PostgreSQL integration, lint, typecheck, unit tests, and build on pushes and pull requests; first hosted run pending |
 | Backup/DR | MISSING | — |
 | Accessibility | MISSING | — |
 | Pilot/Rollout/Operations | MISSING | — |
@@ -96,12 +97,9 @@ Baseline commit: `ef96741`
 
 ## Next Priority (highest risk first)
 
-1. Add a **real database integration test**. Every service test currently mocks `./db`, so ORM regressions are invisible. This is the safety net needed for the next items.
-2. Enforce `organizationId` in the data layer so tenant scoping cannot be forgotten in a handler.
-3. E2E coverage of the primary journey against a real database.
-4. Observability: structured logging, `/health`, `/ready`.
-5. CI pipeline enforcing install → lint → typecheck → test → build → migrate.
-6. Replace `bcryptjs` with native bcrypt or argon2id (~2.7s per login today).
+1. Run PostgreSQL migration and browser coverage for student assignment submission and teacher grading when the database service is available.
+2. Add observability: structured logging, `/health`, `/ready`.
+3. Replace `bcryptjs` with native bcrypt or argon2id (~2.7s per login today).
 
 ### Deferred with justification
 

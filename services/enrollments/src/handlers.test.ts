@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { createEnrollmentHandler, getEnrollmentHandler, deleteEnrollmentHandler } from './handlers';
 
 vi.mock('./db', () => ({
+  findCourseById: vi.fn(),
   findEnrollmentById: vi.fn(),
   findEnrollment: vi.fn(),
   listEnrollmentsByStudent: vi.fn(),
@@ -33,13 +34,19 @@ describe('Enrollment Handlers', () => {
 
       const req: any = {
         body: { studentId: 'student-1', courseId: 'course-1' },
-        user: { id: 'student-1', role: 'student' },
+        user: { id: 'student-1', role: 'student', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await createEnrollmentHandler(req, res);
@@ -51,13 +58,19 @@ describe('Enrollment Handlers', () => {
     it('should reject student enrolling another student', async () => {
       const req: any = {
         body: { studentId: 'student-2', courseId: 'course-1' },
-        user: { id: 'student-1', role: 'student' },
+        user: { id: 'student-1', role: 'student', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await createEnrollmentHandler(req, res);
@@ -72,13 +85,19 @@ describe('Enrollment Handlers', () => {
 
       const req: any = {
         body: { studentId: 'student-1', courseId: 'course-1' },
-        user: { id: 'student-1', role: 'student' },
+        user: { id: 'student-1', role: 'student', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await createEnrollmentHandler(req, res);
@@ -95,13 +114,19 @@ describe('Enrollment Handlers', () => {
 
       const req: any = {
         body: { studentId: 'student-2', courseId: 'course-1' },
-        user: { id: 'admin-1', role: 'admin' },
+        user: { id: 'admin-1', role: 'admin', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await createEnrollmentHandler(req, res);
@@ -118,13 +143,19 @@ describe('Enrollment Handlers', () => {
 
       const req: any = {
         params: { id: 'enroll-1' },
-        user: { id: 'student-1', role: 'student' },
+        user: { id: 'student-1', role: 'student', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await getEnrollmentHandler(req, res);
@@ -133,20 +164,26 @@ describe('Enrollment Handlers', () => {
       expect(res.body).toEqual(mockEnrollment);
     });
 
-    it('should reject viewing another student\'s enrollment', async () => {
+    it("should reject viewing another student's enrollment", async () => {
       const mockEnrollment = { id: 'enroll-1', studentId: 'student-2', courseId: 'course-1' };
       const { findEnrollmentById } = await import('./db');
       (findEnrollmentById as any).mockResolvedValue(mockEnrollment);
 
       const req: any = {
         params: { id: 'enroll-1' },
-        user: { id: 'student-1', role: 'student' },
+        user: { id: 'student-1', role: 'student', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await getEnrollmentHandler(req, res);

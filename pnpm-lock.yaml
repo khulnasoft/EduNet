@@ -76,6 +76,9 @@ importers:
       '@testing-library/react':
         specifier: ^16.0.0
         version: 16.3.3(@testing-library/dom@10.4.2)(@types/react-dom@18.3.7)(@types/react@18.3.31)(react-dom@18.3.1)(react@18.3.1)
+      '@types/express':
+        specifier: ^4.17.17
+        version: 4.17.25
       '@types/jest':
         specifier: ^29.5.0
         version: 29.5.14
@@ -97,6 +100,9 @@ importers:
       eslint-config-next:
         specifier: ^15.0.0
         version: 15.5.26(eslint@8.57.1)(typescript@5.9.3)
+      express:
+        specifier: ^4.18.2
+        version: 4.22.3
       jest:
         specifier: ^29.7.0
         version: 29.7.0(@types/node@22.20.4)
@@ -179,6 +185,9 @@ importers:
       typescript:
         specifier: ^5.5.0
         version: 5.9.3
+      vitest:
+        specifier: ^4.1.11
+        version: 4.1.11(@types/node@22.20.4)(vite@6.4.4)
 
   packages/i18n:
     dependencies:

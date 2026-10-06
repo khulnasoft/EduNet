@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { randomUUID } from 'node:crypto';
-import { findCourseById } from '@edunet/database';
+import { findCourseById } from './db';
 import type { AuthenticatedUser } from '@edunet/rbac';
 import {
   findLessonById,
@@ -50,17 +50,19 @@ function scopeFor(courseId: string): string {
 async function resolveCourseId(
   lessonId: string | undefined,
   courseId: string | undefined,
+  organizationId: string,
 ): Promise<string | null> {
   if (courseId) return courseId;
   if (!lessonId) return null;
 
-  const lesson = await findLessonById(lessonId);
+  const lesson = await findLessonById(lessonId, organizationId);
   return lesson ? lesson.courseId : null;
 }
 
 async function requireOwnedCourse(
   user: AuthenticatedUser | undefined,
   courseId: string,
+  organizationId: string,
   res: Response,
 ): Promise<boolean> {
   if (!user) {
@@ -68,7 +70,7 @@ async function requireOwnedCourse(
     return false;
   }
 
-  const course = await findCourseById(courseId);
+  const course = await findCourseById(courseId, organizationId);
   if (!course) {
     res.status(404).json({ error: 'Course not found' });
     return false;
@@ -83,6 +85,8 @@ async function requireOwnedCourse(
 }
 
 export async function uploadMediaHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -119,18 +123,23 @@ export async function uploadMediaHandler(req: AuthRequest, res: Response) {
   }
 
   if (lessonId) {
-    const lesson = await findLessonById(lessonId);
+    const lesson = await findLessonById(lessonId, organizationId);
     if (!lesson) {
       return res.status(404).json({ error: 'Lesson not found' });
     }
   }
 
-  const effectiveCourseId = await resolveCourseId(lessonId, courseId);
+  const effectiveCourseId = await resolveCourseId(lessonId, courseId, organizationId);
   if (!effectiveCourseId) {
     return res.status(400).json({ error: 'lessonId or courseId is required' });
   }
 
-  if (!(await requireOwnedCourse(req.user, effectiveCourseId, res))) {
+  if (lessonId) {
+    const lesson = await findLessonById(lessonId, organizationId);
+    if (!lesson || lesson.courseId !== effectiveCourseId) return res.status(400).json({ error: 'lessonId must belong to courseId' });
+  }
+
+  if (!(await requireOwnedCourse(req.user, effectiveCourseId, organizationId, res))) {
     return;
   }
 
@@ -161,7 +170,7 @@ export async function uploadMediaHandler(req: AuthRequest, res: Response) {
     duration,
     dimensions,
     isPublic: false,
-  });
+  }, organizationId);
 
   return res.status(201).json({
     ...record,
@@ -171,6 +180,8 @@ export async function uploadMediaHandler(req: AuthRequest, res: Response) {
 }
 
 export async function listMediaHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
@@ -180,15 +191,15 @@ export async function listMediaHandler(req: AuthRequest, res: Response) {
   const offset = Math.max(Number(req.query.offset) || 0, 0);
 
   if (typeof lessonId === 'string') {
-    const lesson = await findLessonById(lessonId);
+    const lesson = await findLessonById(lessonId, organizationId);
     if (!lesson) {
       return res.status(404).json({ error: 'Lesson not found' });
     }
-    return res.json(await listMediaFilesByLesson(lessonId, limit, offset));
+    return res.json(await listMediaFilesByLesson(lessonId, organizationId, limit, offset));
   }
 
   if (typeof courseId === 'string') {
-    return res.json(await listMediaFilesByCourse(courseId, limit, offset));
+    return res.json(await listMediaFilesByCourse(courseId, organizationId, limit, offset));
   }
 
   return res.status(400).json({ error: 'lessonId or courseId is required' });
@@ -199,12 +210,14 @@ export async function listMediaHandler(req: AuthRequest, res: Response) {
  * caller may access the owning course.
  */
 export async function getMediaAccessHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   const { id } = req.params;
-  const record = await findMediaFileById(id);
+  const record = await findMediaFileById(id, organizationId);
 
   if (!record || record.deletedAt) {
     return res.status(404).json({ error: 'Media not found' });
@@ -218,7 +231,7 @@ export async function getMediaAccessHandler(req: AuthRequest, res: Response) {
   // Authorisation is delegated to the enrollment/ownership rules of the
   // courses service; here we only mint for users that already have a session
   // and record the request.
-  await incrementMediaDownloadCount(record.id);
+  await incrementMediaDownloadCount(record.id, organizationId);
 
   return res.json({
     id: record.id,
@@ -231,22 +244,24 @@ export async function getMediaAccessHandler(req: AuthRequest, res: Response) {
 }
 
 export async function deleteMediaHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   if (!req.user) {
     return res.status(401).json({ error: 'Not authenticated' });
   }
 
   const { id } = req.params;
-  const record = await findMediaFileById(id);
+  const record = await findMediaFileById(id, organizationId);
 
   if (!record || record.deletedAt) {
     return res.status(404).json({ error: 'Media not found' });
   }
 
-  if (record.courseId && !(await requireOwnedCourse(req.user, record.courseId, res))) {
+  if (record.courseId && !(await requireOwnedCourse(req.user, record.courseId, organizationId, res))) {
     return;
   }
 
-  const deleted = await deleteMediaFile(id);
+  const deleted = await deleteMediaFile(id, organizationId);
 
   try {
     await getStorage().delete(record.storageKey);

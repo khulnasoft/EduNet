@@ -48,6 +48,16 @@ export function getDb(): Database {
   return database;
 }
 
+/** Close the shared connection, primarily for integration-test teardown. */
+export async function closeDb(): Promise<void> {
+  if (client) {
+    const activeClient = client;
+    client = null;
+    database = null;
+    await activeClient.end();
+  }
+}
+
 export async function findCourseById(id: string) {
   const result = await getDb()
     .select()

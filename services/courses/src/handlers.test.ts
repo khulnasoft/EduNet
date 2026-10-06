@@ -57,14 +57,26 @@ describe('Course Handlers', () => {
       (createCourse as any).mockResolvedValue(mockCourse);
 
       const req: any = {
-        body: { title: 'Test Course', description: 'Test', subject: 'Math', organizationId: 'org-1', teacherId: 'teacher-1' },
-        user: { id: 'teacher-1', role: 'teacher' },
+        body: {
+          title: 'Test Course',
+          description: 'Test',
+          subject: 'Math',
+          organizationId: 'org-1',
+          teacherId: 'teacher-1',
+        },
+        user: { id: 'teacher-1', role: 'teacher', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await createCourseHandler(req, res);
@@ -74,12 +86,21 @@ describe('Course Handlers', () => {
     });
 
     it('should return 400 for invalid data', async () => {
-      const req: any = { body: {}, user: { id: 'teacher-1', role: 'teacher' } };
+      const req: any = {
+        body: {},
+        user: { id: 'teacher-1', role: 'teacher', organizationId: 'org-1' },
+      };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await createCourseHandler(req, res);
@@ -98,13 +119,19 @@ describe('Course Handlers', () => {
       const req: any = {
         params: { id: 'course-1' },
         body: { title: 'Updated' },
-        user: { id: 'teacher-1', role: 'teacher' },
+        user: { id: 'teacher-1', role: 'teacher', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await updateCourseHandler(req, res);
@@ -113,7 +140,7 @@ describe('Course Handlers', () => {
       expect(res.body).toEqual(mockCourse);
     });
 
-    it('should reject updating another teacher\'s course', async () => {
+    it("should reject updating another teacher's course", async () => {
       const mockCourse = { id: 'course-1', title: 'Test', teacherId: 'teacher-2' };
       const { findCourseById } = await import('./db');
       (findCourseById as any).mockResolvedValue(mockCourse);
@@ -121,13 +148,19 @@ describe('Course Handlers', () => {
       const req: any = {
         params: { id: 'course-1' },
         body: { title: 'Updated' },
-        user: { id: 'teacher-1', role: 'teacher' },
+        user: { id: 'teacher-1', role: 'teacher', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await updateCourseHandler(req, res);
@@ -145,13 +178,19 @@ describe('Course Handlers', () => {
       const req: any = {
         params: { id: 'course-1' },
         body: { title: 'Updated' },
-        user: { id: 'admin-1', role: 'admin' },
+        user: { id: 'admin-1', role: 'admin', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await updateCourseHandler(req, res);
@@ -169,13 +208,19 @@ describe('Course Handlers', () => {
 
       const req: any = {
         params: { id: 'course-1' },
-        user: { id: 'teacher-1', role: 'teacher' },
+        user: { id: 'teacher-1', role: 'teacher', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await deleteCourseHandler(req, res);
@@ -183,20 +228,26 @@ describe('Course Handlers', () => {
       expect(res.statusCode).toBe(200);
     });
 
-    it('should reject deleting another teacher\'s course', async () => {
+    it("should reject deleting another teacher's course", async () => {
       const mockCourse = { id: 'course-1', title: 'Test', teacherId: 'teacher-2' };
       const { findCourseById } = await import('./db');
       (findCourseById as any).mockResolvedValue(mockCourse);
 
       const req: any = {
         params: { id: 'course-1' },
-        user: { id: 'teacher-1', role: 'teacher' },
+        user: { id: 'teacher-1', role: 'teacher', organizationId: 'org-1' },
       };
       const res: any = {
         statusCode: 200,
         body: undefined,
-        status(code: number) { this.statusCode = code; return this; },
-        json(data: any) { this.body = data; return this; },
+        status(code: number) {
+          this.statusCode = code;
+          return this;
+        },
+        json(data: any) {
+          this.body = data;
+          return this;
+        },
       };
 
       await deleteCourseHandler(req, res);

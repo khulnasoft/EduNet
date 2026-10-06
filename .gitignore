@@ -12,5 +12,7 @@ dist/
 build/
 .next/
 .turbo/
+apps/web/test-results/
+apps/web/playwright-report/
 *.log
 *.tmp

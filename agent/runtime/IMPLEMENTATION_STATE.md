@@ -1,7 +1,7 @@
 # EduNet Implementation State
 
 ## Current Phase
-CORE LMS / FRONTEND INTEGRATION
+CORE LMS / TENANT ISOLATION
 
 ## Status
 ACTIVE
@@ -22,8 +22,8 @@ ACTIVE
 6. Identity/RBAC foundation ✓
 7. Core LMS vertical slice ✓
 8. Frontend integration ✓
-9. Automated test baseline
-10. CI baseline
+9. Automated test baseline ✓
+10. CI baseline ✓
 11. Production-readiness iteration
 
 ## Completed Work
@@ -45,12 +45,18 @@ ACTIVE
 - Register page with role selection
 - Dashboard page with user info and navigation
 - All dependencies installed
+- Tenant scoping in courses, users, assignments, submissions, enrollments, assessments, and content services (lessons, progress, resources, and media)
+- Real PostgreSQL integration suite: 5 tests covering core LMS persistence, foreign keys, and cross-organization user/assignment/submission/enrollment/assessment/content access, including content progress, resources, and media
+- Full monorepo unit suite: 85 tests passing; all build tasks required by `pnpm test` passed
+- GitHub Actions CI workflow runs frozen install, PostgreSQL migration/integration, lint, typecheck, unit/build, and browser E2E on pushes and pull requests
+- PostgreSQL-backed Playwright journey passes: teacher registers and creates course/lesson; student registers, enrolls, opens the lesson, and records completion progress
+- Shared UI inputs and registration role control now expose programmatically associated labels after E2E surfaced missing label associations
+- Teacher assignment creation and submission review/grading pages implemented; student assignment submission and grade feedback display wired end to end
+- Assignment point totals and submission grades corrected from unintended PostgreSQL serial sequences to integer values; migration `0002_assignment_grading` added
+- Grade input is validated as a non-negative whole number bounded by the assignment maximum; submission content and feedback are length-validated
 
 ## Current Gate
-7 — Core LMS / Frontend Integration
-
-## Next Gate
-8 — Automated Test Baseline
+10 — Production Readiness (assignment/grading validation pending PostgreSQL availability)
 
 ## Completion Rule
 Do not mark a gate complete unless implementation and validation support it.

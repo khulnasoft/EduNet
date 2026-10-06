@@ -1,4 +1,4 @@
-import { pgTable, serial, text, timestamp, boolean, uuid, varchar, index, unique } from 'drizzle-orm/pg-core';
+import { pgTable, serial, integer, text, timestamp, boolean, uuid, varchar, index, unique } from 'drizzle-orm/pg-core';
 import { relations } from 'drizzle-orm';
 
 // Organizations
@@ -106,7 +106,7 @@ export const assignments = pgTable('assignments', {
   title: varchar('title', { length: 200 }).notNull(),
   description: text('description').notNull(),
   dueDate: timestamp('due_date').notNull(),
-  maxPoints: serial('max_points').notNull(),
+  maxPoints: integer('max_points').notNull(),
   isActive: boolean('is_active').default(true).notNull(),
   deletedAt: timestamp('deleted_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
@@ -126,7 +126,7 @@ export const submissions = pgTable('submissions', {
   studentId: uuid('student_id').references(() => users.id, { onDelete: 'cascade' }).notNull(),
   content: text('content').notNull(),
   submittedAt: timestamp('submitted_at').defaultNow().notNull(),
-  grade: serial('grade'),
+  grade: integer('grade'),
   feedback: text('feedback'),
   gradedAt: timestamp('graded_at'),
   gradedBy: uuid('graded_by').references(() => users.id, { onDelete: 'set null' }),

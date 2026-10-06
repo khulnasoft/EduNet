@@ -79,8 +79,9 @@ export default function RegisterPage() {
               placeholder="••••••••"
             />
             <div className="space-y-2">
-              <label className="block text-sm font-medium text-gray-700">Role</label>
+              <label htmlFor="role" className="block text-sm font-medium text-gray-700">Role</label>
               <select
+                id="role"
                 name="role"
                 value={formData.role}
                 onChange={handleChange}

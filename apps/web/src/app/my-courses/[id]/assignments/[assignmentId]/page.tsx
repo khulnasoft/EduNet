@@ -18,7 +18,7 @@ interface Submission {
   id: string;
   content: string;
   submittedAt: string;
-  grade?: number;
+  grade?: number | null;
   feedback?: string;
 }
 
@@ -138,7 +138,7 @@ export default function AssignmentSubmissionPage() {
                   <p className="font-semibold">Submitted</p>
                   <p className="text-sm">Submitted on: {new Date(submission.submittedAt).toLocaleDateString()}</p>
                 </div>
-                {submission.grade !== undefined && (
+                {submission.grade != null && (
                   <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-3 rounded">
                     <p className="font-semibold">Grade: {submission.grade} / {assignment.maxPoints}</p>
                     {submission.feedback && <p className="text-sm mt-2">Feedback: {submission.feedback}</p>}
@@ -159,8 +159,9 @@ export default function AssignmentSubmissionPage() {
                   </div>
                 )}
                 <div>
-                  <label className="block text-sm font-medium mb-2">Your Answer</label>
+                  <label htmlFor="submission-answer" className="block text-sm font-medium mb-2">Your Answer</label>
                   <textarea
+                    id="submission-answer"
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     required

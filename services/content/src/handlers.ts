@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { findCourseById } from '@edunet/database';
+import { findCourseById } from './db';
 import {
   findLessonById,
   listLessonsByCourse,
@@ -30,6 +30,8 @@ export interface AuthRequest extends Request {
 
 // Lesson handlers
 export async function createLessonHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { courseId, title, type, content, order } = req.body;
 
@@ -37,7 +39,7 @@ export async function createLessonHandler(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: 'courseId, title, type, and order are required' });
     }
 
-    const course = await findCourseById(courseId);
+    const course = await findCourseById(courseId, organizationId);
     if (!course) {
       return res.status(404).json({ error: 'Course not found' });
     }
@@ -55,7 +57,7 @@ export async function createLessonHandler(req: AuthRequest, res: Response) {
       order,
       duration: req.body.duration,
       isPublished: req.body.isPublished || 'false',
-    });
+    }, organizationId);
 
     res.status(201).json(lesson);
   } catch (error: any) {
@@ -64,9 +66,11 @@ export async function createLessonHandler(req: AuthRequest, res: Response) {
 }
 
 export async function getLessonHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
-    const lesson = await findLessonById(id);
+    const lesson = await findLessonById(id, organizationId);
     
     if (!lesson) {
       return res.status(404).json({ error: 'Lesson not found' });
@@ -79,6 +83,8 @@ export async function getLessonHandler(req: AuthRequest, res: Response) {
 }
 
 export async function listLessonsHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { courseId } = req.query;
     const limit = parseInt(req.query.limit as string) || 100;
@@ -88,7 +94,7 @@ export async function listLessonsHandler(req: AuthRequest, res: Response) {
       return res.status(400).json({ error: 'courseId is required' });
     }
     
-    const lessons = await listLessonsByCourse(courseId, limit, offset);
+    const lessons = await listLessonsByCourse(courseId, organizationId, limit, offset);
     res.json(lessons);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -96,22 +102,25 @@ export async function listLessonsHandler(req: AuthRequest, res: Response) {
 }
 
 export async function updateLessonHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
-    const data = req.body;
+    const data = req.body ?? {};
 
-    const existing = await findLessonById(id);
+    const existing = await findLessonById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Lesson not found' });
     }
 
-    const course = await findCourseById(existing.courseId);
+    const course = await findCourseById(existing.courseId, organizationId);
     if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
       return res.status(403).json({ error: 'You can only edit content for your own courses' });
     }
 
-    const lesson = await updateLesson(id, {
-      ...data,
+    const lesson = await updateLesson(id, organizationId, {
+      title: data.title, description: data.description, type: data.type, content: data.content,
+      order: data.order, duration: data.duration, isPublished: data.isPublished,
       publishedAt: data.isPublished === 'true' && !existing.publishedAt ? new Date() : undefined,
     });
 
@@ -122,20 +131,22 @@ export async function updateLessonHandler(req: AuthRequest, res: Response) {
 }
 
 export async function deleteLessonHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
 
-    const existing = await findLessonById(id);
+    const existing = await findLessonById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Lesson not found' });
     }
 
-    const course = await findCourseById(existing.courseId);
+    const course = await findCourseById(existing.courseId, organizationId);
     if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
       return res.status(403).json({ error: 'You can only delete content for your own courses' });
     }
 
-    const lesson = await deleteLesson(id);
+    const lesson = await deleteLesson(id, organizationId);
     res.json(lesson);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -144,6 +155,8 @@ export async function deleteLessonHandler(req: AuthRequest, res: Response) {
 
 // Lesson Progress handlers
 export async function createLessonProgressHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { lessonId, studentId, status, progress } = req.body;
     
@@ -155,24 +168,30 @@ export async function createLessonProgressHandler(req: AuthRequest, res: Respons
       return res.status(403).json({ error: 'Students can only track their own progress' });
     }
 
-    const progressRecord = await createLessonProgress({
-      lessonId,
-      studentId,
+    const existing = await findLessonProgress(lessonId, studentId, organizationId);
+    const values = {
       status,
       progress: progress || '0',
       timeSpent: req.body.timeSpent,
-    });
-    
-    res.status(201).json(progressRecord);
+      lastAccessedAt: new Date(),
+      completedAt: status === 'completed' ? new Date() : undefined,
+    };
+    const progressRecord = existing
+      ? await updateLessonProgress(existing.id, organizationId, values)
+      : await createLessonProgress({ lessonId, studentId, ...values }, organizationId);
+
+    res.status(existing ? 200 : 201).json(progressRecord);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
   }
 }
 
 export async function getLessonProgressHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
-    const progress = await findLessonProgressById(id);
+    const progress = await findLessonProgressById(id, organizationId);
     
     if (!progress) {
       return res.status(404).json({ error: 'Lesson progress not found' });
@@ -189,6 +208,8 @@ export async function getLessonProgressHandler(req: AuthRequest, res: Response) 
 }
 
 export async function listLessonProgressHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { studentId } = req.query;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -202,7 +223,7 @@ export async function listLessonProgressHandler(req: AuthRequest, res: Response)
       return res.status(403).json({ error: 'You can only view your own progress' });
     }
     
-    const progressList = await listLessonProgressByStudent(studentId, limit, offset);
+    const progressList = await listLessonProgressByStudent(studentId, organizationId, limit, offset);
     res.json(progressList);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -210,11 +231,13 @@ export async function listLessonProgressHandler(req: AuthRequest, res: Response)
 }
 
 export async function updateLessonProgressHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
     const { status, progress, timeSpent } = req.body;
     
-    const existing = await findLessonProgressById(id);
+    const existing = await findLessonProgressById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Lesson progress not found' });
     }
@@ -223,7 +246,7 @@ export async function updateLessonProgressHandler(req: AuthRequest, res: Respons
       return res.status(403).json({ error: 'You can only update your own progress' });
     }
 
-    const progressRecord = await updateLessonProgress(id, {
+    const progressRecord = await updateLessonProgress(id, organizationId, {
       status,
       progress,
       timeSpent,
@@ -238,10 +261,12 @@ export async function updateLessonProgressHandler(req: AuthRequest, res: Respons
 }
 
 export async function deleteLessonProgressHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
     
-    const existing = await findLessonProgressById(id);
+    const existing = await findLessonProgressById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Lesson progress not found' });
     }
@@ -250,7 +275,7 @@ export async function deleteLessonProgressHandler(req: AuthRequest, res: Respons
       return res.status(403).json({ error: 'You can only delete your own progress' });
     }
 
-    const progressRecord = await deleteLessonProgress(id);
+    const progressRecord = await deleteLessonProgress(id, organizationId);
     res.json(progressRecord);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -259,6 +284,8 @@ export async function deleteLessonProgressHandler(req: AuthRequest, res: Respons
 
 // Resource handlers
 export async function createResourceHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { title, type, url, courseId } = req.body;
 
@@ -267,7 +294,7 @@ export async function createResourceHandler(req: AuthRequest, res: Response) {
     }
 
     if (courseId) {
-      const course = await findCourseById(courseId);
+      const course = await findCourseById(courseId, organizationId);
       if (!course) {
         return res.status(404).json({ error: 'Course not found' });
       }
@@ -287,7 +314,7 @@ export async function createResourceHandler(req: AuthRequest, res: Response) {
       description: req.body.description,
       order: req.body.order,
       isDownloadable: req.body.isDownloadable || 'true',
-    });
+    }, organizationId);
 
     res.status(201).json(resource);
   } catch (error: any) {
@@ -296,9 +323,11 @@ export async function createResourceHandler(req: AuthRequest, res: Response) {
 }
 
 export async function getResourceHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
-    const resource = await findResourceById(id);
+    const resource = await findResourceById(id, organizationId);
     
     if (!resource) {
       return res.status(404).json({ error: 'Resource not found' });
@@ -311,6 +340,8 @@ export async function getResourceHandler(req: AuthRequest, res: Response) {
 }
 
 export async function listResourcesHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { lessonId, courseId } = req.query;
     const limit = parseInt(req.query.limit as string) || 50;
@@ -318,9 +349,9 @@ export async function listResourcesHandler(req: AuthRequest, res: Response) {
     
     let resources;
     if (lessonId && typeof lessonId === 'string') {
-      resources = await listResourcesByLesson(lessonId, limit, offset);
+      resources = await listResourcesByLesson(lessonId, organizationId, limit, offset);
     } else if (courseId && typeof courseId === 'string') {
-      resources = await listResourcesByCourse(courseId, limit, offset);
+      resources = await listResourcesByCourse(courseId, organizationId, limit, offset);
     } else {
       return res.status(400).json({ error: 'lessonId or courseId is required' });
     }
@@ -332,23 +363,29 @@ export async function listResourcesHandler(req: AuthRequest, res: Response) {
 }
 
 export async function updateResourceHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
-    const data = req.body;
+    const input = req.body ?? {};
 
-    const existing = await findResourceById(id);
+    const existing = await findResourceById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Resource not found' });
     }
 
     if (existing.courseId) {
-      const course = await findCourseById(existing.courseId);
+      const course = await findCourseById(existing.courseId, organizationId);
       if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
         return res.status(403).json({ error: 'You can only edit resources for your own courses' });
       }
     }
 
-    const resource = await updateResource(id, data);
+    const resource = await updateResource(id, organizationId, {
+      title: input.title, type: input.type, url: input.url, size: input.size,
+      mimeType: input.mimeType, description: input.description, order: input.order,
+      isDownloadable: input.isDownloadable,
+    });
     res.json(resource);
   } catch (error: any) {
     res.status(400).json({ error: error.message });
@@ -356,22 +393,24 @@ export async function updateResourceHandler(req: AuthRequest, res: Response) {
 }
 
 export async function deleteResourceHandler(req: AuthRequest, res: Response) {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) return res.status(403).json({ error: 'Organization context required' });
   try {
     const { id } = req.params;
 
-    const existing = await findResourceById(id);
+    const existing = await findResourceById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Resource not found' });
     }
 
     if (existing.courseId) {
-      const course = await findCourseById(existing.courseId);
+      const course = await findCourseById(existing.courseId, organizationId);
       if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
         return res.status(403).json({ error: 'You can only delete resources for your own courses' });
       }
     }
 
-    const resource = await deleteResource(id);
+    const resource = await deleteResource(id, organizationId);
     res.json(resource);
   } catch (error: any) {
     res.status(500).json({ error: error.message });

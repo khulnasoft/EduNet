@@ -36,6 +36,8 @@ export default function CourseLearningPage() {
   const [currentLesson, setCurrentLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [progressError, setProgressError] = useState('');
+  const [savingProgress, setSavingProgress] = useState(false);
 
   useEffect(() => {
     if (!user || !token || !courseId) return;
@@ -89,6 +91,37 @@ export default function CourseLearningPage() {
 
   const handleLessonClick = (lesson: Lesson) => {
     setCurrentLesson(lesson);
+  };
+
+  const handleCompleteLesson = async () => {
+    if (!user || !token || !currentLesson) return;
+    setSavingProgress(true);
+    setProgressError('');
+    try {
+      const response = await fetch('http://localhost:3001/api/content/lesson-progress', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          lessonId: currentLesson.id,
+          studentId: user.id,
+          status: 'completed',
+          progress: '100',
+        }),
+      });
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not update lesson progress');
+      setProgress((current) => [
+        ...current.filter((item) => item.lessonId !== currentLesson.id),
+        result,
+      ]);
+    } catch (err: any) {
+      setProgressError(err.message);
+    } finally {
+      setSavingProgress(false);
+    }
   };
 
   if (!user) {
@@ -253,6 +286,19 @@ export default function CourseLearningPage() {
                   >
                     Next
                   </Button>
+                </div>
+                <div className="mt-6 border-t pt-6">
+                  {progressError && <p role="alert" className="mb-3 text-sm text-red-600">{progressError}</p>}
+                  {user.role === 'student' && (
+                    <Button
+                      variant={getProgressForLesson(currentLesson.id)?.status === 'completed' ? 'secondary' : 'primary'}
+                      isLoading={savingProgress}
+                      disabled={getProgressForLesson(currentLesson.id)?.status === 'completed'}
+                      onClick={handleCompleteLesson}
+                    >
+                      {getProgressForLesson(currentLesson.id)?.status === 'completed' ? 'Lesson completed' : 'Mark lesson complete'}
+                    </Button>
+                  )}
                 </div>
               </div>
             ) : (

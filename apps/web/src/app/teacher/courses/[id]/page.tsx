@@ -94,8 +94,14 @@ export default function TeacherCourseDetailPage() {
         );
 
         if (assignmentsResponse.ok) {
-          const assignmentsData = await assignmentsResponse.json();
-          setAssignments(assignmentsData);
+          const assignmentsData: Assignment[] = await assignmentsResponse.json();
+          const withCounts = await Promise.all(assignmentsData.map(async assignment => {
+            const response = await fetch(`http://localhost:3001/api/assignments/${assignment.id}`, { headers: { Authorization: `Bearer ${token}` } });
+            if (!response.ok) return assignment;
+            const detail = await response.json();
+            return { ...assignment, submissionCount: detail.submissionCount };
+          }));
+          setAssignments(withCounts);
         }
       } catch (err: any) {
         setError(err.message);
@@ -203,18 +209,23 @@ export default function TeacherCourseDetailPage() {
             ) : (
               <div className="space-y-3">
                 {assignments.map((assignment) => (
-                  <div key={assignment.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
+                    <div key={assignment.id} className="flex justify-between items-center p-3 bg-gray-50 rounded">
                     <div>
                       <p className="font-medium">{assignment.title}</p>
                       <p className="text-sm text-gray-500">
                         Due: {new Date(assignment.dueDate).toLocaleDateString()}
                       </p>
                     </div>
+                    <div className="flex items-center gap-4">
                     <div className="text-right">
                       <p className="text-sm text-gray-500">{assignment.maxPoints} pts</p>
                       <p className="text-sm text-gray-500">
                         {assignment.submissionCount || 0} submissions
                       </p>
+                    </div>
+                    <Link href={`/teacher/courses/${courseId}/assignments/${assignment.id}`}>
+                      <Button variant="secondary">Review submissions</Button>
+                    </Link>
                     </div>
                   </div>
                 ))}

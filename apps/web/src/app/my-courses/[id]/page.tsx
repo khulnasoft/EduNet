@@ -26,7 +26,7 @@ interface Submission {
   id: string;
   assignmentId: string;
   content: string;
-  grade?: number;
+  grade?: number | null;
   submittedAt: string;
   gradedAt?: string;
 }
@@ -173,6 +173,17 @@ export default function MyCourseDetailPage() {
           </div>
 
           <p className="text-gray-700">{course.description}</p>
+          {isEnrolled && (
+            <div className="mt-6 rounded-lg border border-green-200 bg-green-50 p-4 text-green-700">
+              <p className="font-semibold">You are enrolled in this course</p>
+              <p className="text-sm">Status: {enrollment.status}</p>
+              <Link href={`/my-courses/${courseId}/learn`}>
+                <Button variant="primary" className="mt-4">
+                  Start Learning
+                </Button>
+              </Link>
+            </div>
+          )}
         </div>
 
         <div className="border rounded-lg p-8">
@@ -185,7 +196,7 @@ export default function MyCourseDetailPage() {
               {assignments.map((assignment) => {
                 const submission = getSubmissionForAssignment(assignment.id);
                 const isSubmitted = submission !== undefined;
-                const isGraded = submission?.grade !== undefined;
+                const isGraded = submission?.grade != null;
 
                 return (
                   <div key={assignment.id} className="border rounded-lg p-6">
@@ -211,27 +222,12 @@ export default function MyCourseDetailPage() {
                         <p className="text-sm">Submitted on: {new Date(submission.submittedAt).toLocaleDateString()}</p>
                         <p className="text-sm">Awaiting grading</p>
                       </div>
-                    ) : isEnrolled ? (
-                      <div className="bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded">
-                        <p className="font-semibold">You are enrolled in this course</p>
-                        <p className="text-sm">Status: {enrollment.status}</p>
-                        <div className="flex gap-2 mt-4">
-                          <Link href={`/my-courses/${courseId}/learn`}>
-                            <Button variant="primary">
-                              Start Learning
-                            </Button>
-                          </Link>
-                          <Link href={`/my-courses/${courseId}`}>
-                            <Button variant="secondary">
-                              View Assignments
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
                     ) : (
-                      <Button variant="primary" size="sm">
-                        Submit Assignment
-                      </Button>
+                      isEnrolled ? (
+                        <Link href={`/my-courses/${courseId}/assignments/${assignment.id}`}>
+                          <Button variant="primary" size="sm">Open Assignment</Button>
+                        </Link>
+                      ) : <p className="text-sm text-gray-500">Enroll in this course to submit the assignment.</p>
                     )}
                   </div>
                 );

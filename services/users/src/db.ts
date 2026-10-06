@@ -1,6 +1,6 @@
 import { drizzle } from 'drizzle-orm/postgres-js';
 import { users } from '@edunet/database';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import postgres from 'postgres';
 import bcrypt from 'bcryptjs';
 
@@ -9,18 +9,31 @@ let db: ReturnType<typeof drizzle> | null = null;
 
 export function getDb() {
   if (!db) {
-    const connectionString = process.env.DATABASE_URL || 
+    const connectionString =
+      process.env.DATABASE_URL ||
       `postgres://${process.env.DB_USER}:${process.env.DB_PASSWORD}@${process.env.DB_HOST}:${process.env.DB_PORT}/${process.env.DB_NAME}`;
-    
+
     client = postgres(connectionString);
     db = drizzle(client);
   }
   return db;
 }
 
-export async function findUserById(id: string) {
+export async function closeDb(): Promise<void> {
+  if (client) {
+    const activeClient = client;
+    client = null;
+    db = null;
+    await activeClient.end();
+  }
+}
+
+export async function findUserById(id: string, organizationId: string) {
   const db = getDb();
-  const result = await db.select().from(users).where(eq(users.id, id));
+  const result = await db
+    .select()
+    .from(users)
+    .where(and(eq(users.id, id), eq(users.organizationId, organizationId)));
   return result[0] || null;
 }
 
@@ -32,15 +45,24 @@ export async function findUserByEmail(email: string) {
 
 export async function listUsersByOrganization(organizationId: string, limit = 50, offset = 0) {
   const db = getDb();
-  return db.select().from(users).where(eq(users.organizationId, organizationId)).limit(limit).offset(offset);
+  return db
+    .select()
+    .from(users)
+    .where(eq(users.organizationId, organizationId))
+    .limit(limit)
+    .offset(offset);
 }
 
-export async function updateUser(id: string, data: {
-  firstName?: string;
-  lastName?: string;
-  phoneNumber?: string;
-  avatarUrl?: string;
-}) {
+export async function updateUser(
+  id: string,
+  organizationId: string,
+  data: {
+    firstName?: string;
+    lastName?: string;
+    phoneNumber?: string;
+    avatarUrl?: string;
+  }
+) {
   const db = getDb();
   const [user] = await db
     .update(users)
@@ -48,12 +70,12 @@ export async function updateUser(id: string, data: {
       ...data,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, id))
+    .where(and(eq(users.id, id), eq(users.organizationId, organizationId)))
     .returning();
   return user;
 }
 
-export async function updateUserPassword(id: string, newPassword: string) {
+export async function updateUserPassword(id: string, organizationId: string, newPassword: string) {
   const db = getDb();
   const passwordHash = await bcrypt.hash(newPassword, 10);
   const [user] = await db
@@ -62,12 +84,12 @@ export async function updateUserPassword(id: string, newPassword: string) {
       passwordHash,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, id))
+    .where(and(eq(users.id, id), eq(users.organizationId, organizationId)))
     .returning();
   return user;
 }
 
-export async function verifyUser(id: string) {
+export async function verifyUser(id: string, organizationId: string) {
   const db = getDb();
   const [user] = await db
     .update(users)
@@ -75,13 +97,16 @@ export async function verifyUser(id: string) {
       isVerified: true,
       updatedAt: new Date(),
     })
-    .where(eq(users.id, id))
+    .where(and(eq(users.id, id), eq(users.organizationId, organizationId)))
     .returning();
   return user;
 }
 
-export async function deleteUser(id: string) {
+export async function deleteUser(id: string, organizationId: string) {
   const db = getDb();
-  const [user] = await db.delete(users).where(eq(users.id, id)).returning();
+  const [user] = await db
+    .delete(users)
+    .where(and(eq(users.id, id), eq(users.organizationId, organizationId)))
+    .returning();
   return user;
 }

@@ -49,12 +49,12 @@ export const assignmentSchema = z.object({
   title: z.string().min(1).max(200),
   description: z.string().min(1).max(5000),
   dueDate: z.string().datetime(),
-  maxPoints: z.number().min(0),
+  maxPoints: z.number().int().min(0).max(100000),
 });
 
 export const submissionSchema = z.object({
   assignmentId: z.string().uuid(),
-  content: z.string().min(1).max(10000),
+  content: z.string().trim().min(1).max(10000),
 });
 
 // Assessment validation schemas

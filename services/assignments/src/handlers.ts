@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { assignmentSchema } from '@edunet/validation';
-import { findCourseById } from '@edunet/database';
 import {
+  findCourseById,
   findAssignmentById,
   listAssignmentsByCourse,
   createAssignment,
@@ -18,11 +18,35 @@ export interface AuthRequest extends Request {
   };
 }
 
+function requireOrganizationId(req: AuthRequest, res: Response): string | null {
+  const organizationId = req.user?.organizationId;
+  if (!organizationId) {
+    res.status(403).json({ error: 'An organization-scoped account is required' });
+    return null;
+  }
+  return organizationId;
+}
+
 export async function createAssignmentHandler(req: AuthRequest, res: Response) {
   try {
+    const organizationId = requireOrganizationId(req, res);
+    if (!organizationId) return;
+
     const data = assignmentSchema.parse(req.body);
+    const course = await findCourseById(data.courseId, organizationId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+    if (req.user?.role !== 'admin' && course.teacherId !== req.user?.id) {
+      return res
+        .status(403)
+        .json({ error: 'You can only create assignments for your own courses' });
+    }
+
     const assignment = await createAssignment({
       ...data,
+      organizationId,
+      teacherId: course.teacherId,
       dueDate: new Date(data.dueDate),
     });
     res.status(201).json(assignment);
@@ -33,14 +57,17 @@ export async function createAssignmentHandler(req: AuthRequest, res: Response) {
 
 export async function getAssignmentHandler(req: AuthRequest, res: Response) {
   try {
+    const organizationId = requireOrganizationId(req, res);
+    if (!organizationId) return;
+
     const { id } = req.params;
-    const assignment = await findAssignmentById(id);
-    
+    const assignment = await findAssignmentById(id, organizationId);
+
     if (!assignment) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
-    
-    const submissionCount = await getAssignmentSubmissionCount(id);
+
+    const submissionCount = await getAssignmentSubmissionCount(id, organizationId);
     res.json({ ...assignment, submissionCount });
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -49,15 +76,23 @@ export async function getAssignmentHandler(req: AuthRequest, res: Response) {
 
 export async function listAssignmentsHandler(req: AuthRequest, res: Response) {
   try {
+    const organizationId = requireOrganizationId(req, res);
+    if (!organizationId) return;
+
     const { courseId } = req.query;
     const limit = parseInt(req.query.limit as string) || 50;
     const offset = parseInt(req.query.offset as string) || 0;
-    
+
     if (!courseId || typeof courseId !== 'string') {
       return res.status(400).json({ error: 'courseId is required' });
     }
-    
-    const assignments = await listAssignmentsByCourse(courseId, limit, offset);
+
+    const course = await findCourseById(courseId, organizationId);
+    if (!course) {
+      return res.status(404).json({ error: 'Course not found' });
+    }
+
+    const assignments = await listAssignmentsByCourse(courseId, organizationId, limit, offset);
     res.json(assignments);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
@@ -66,20 +101,23 @@ export async function listAssignmentsHandler(req: AuthRequest, res: Response) {
 
 export async function updateAssignmentHandler(req: AuthRequest, res: Response) {
   try {
+    const organizationId = requireOrganizationId(req, res);
+    if (!organizationId) return;
+
     const { id } = req.params;
     const data = assignmentSchema.partial().parse(req.body);
 
-    const existing = await findAssignmentById(id);
+    const existing = await findAssignmentById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
 
-    const course = await findCourseById(existing.courseId);
+    const course = await findCourseById(existing.courseId, organizationId);
     if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
       return res.status(403).json({ error: 'You can only edit assignments for your own courses' });
     }
 
-    const assignment = await updateAssignment(id, {
+    const assignment = await updateAssignment(id, organizationId, {
       ...data,
       dueDate: data.dueDate ? new Date(data.dueDate) : undefined,
     });
@@ -91,19 +129,24 @@ export async function updateAssignmentHandler(req: AuthRequest, res: Response) {
 
 export async function deleteAssignmentHandler(req: AuthRequest, res: Response) {
   try {
+    const organizationId = requireOrganizationId(req, res);
+    if (!organizationId) return;
+
     const { id } = req.params;
 
-    const existing = await findAssignmentById(id);
+    const existing = await findAssignmentById(id, organizationId);
     if (!existing) {
       return res.status(404).json({ error: 'Assignment not found' });
     }
 
-    const course = await findCourseById(existing.courseId);
+    const course = await findCourseById(existing.courseId, organizationId);
     if (req.user?.role !== 'admin' && course?.teacherId !== req.user?.id) {
-      return res.status(403).json({ error: 'You can only delete assignments for your own courses' });
+      return res
+        .status(403)
+        .json({ error: 'You can only delete assignments for your own courses' });
     }
 
-    const assignment = await deleteAssignment(id);
+    const assignment = await deleteAssignment(id, organizationId);
     res.json(assignment);
   } catch (error: any) {
     res.status(500).json({ error: error.message });
