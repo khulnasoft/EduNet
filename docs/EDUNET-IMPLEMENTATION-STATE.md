@@ -20,7 +20,7 @@ Baseline commit: `ef96741`
 | Migrations | `drizzle-kit migrate` on PostgreSQL 16 | **PASS — 17 tables created** |
 | Migration constraints | live SQL assertions | **PASS** (unique/FK/NOT NULL all reject bad data) |
 | E2E | — | MISSING |
-| Security scan | `gh api dependabot/alerts` | **Critical: 0** (CVE-2026-47429 fixed). Remaining alerts are `drizzle-orm` SQL-injection-in-identifier (HIGH, **not reachable** — see below) plus transitive vite/esbuild/postcss/minimatch |
+| Security scan | `gh api dependabot/alerts` | **Critical: 0 in the dependency tree.** Vitest 4.1.11 removes `tinypool` entirely, clearing GHSA-5gmw-xhrv-c9v3 and GHSA-85c8-ppgw-ccpr (prototype pollution → RCE). Remaining: `drizzle-orm` identifier escaping (HIGH, **not reachable** — see deferred), plus transitive vite/esbuild/postcss/minimatch |
 
 ### Test inventory
 | Package | Tests | Covers |
@@ -52,9 +52,12 @@ Baseline commit: `ef96741`
 | 13 | **High** | **Path traversal** in the local storage provider: `path.join(basePath, userKey)` allowed `../` to escape the storage root | Keys are `<scope>/<uuid>.<ext>` from generated UUIDs, regex-validated, plus a resolved-path containment check |
 | 14 | **High** | `media_files` table existed in schema and migrations but **had no API at all** — the earlier "media metadata" completion claim was untrue | Implemented upload/list/access/delete with teacher course-ownership checks, pagination, soft delete and download counting |
 | 15 | **High** | `media_files.url` was `NOT NULL`, forcing a permanent public URL to be stored, contradicting the private-media rule | Column made nullable (migration `0001`); access URLs are signed per request |
-| 16 | **Critical** | **CVE-2026-47429** — Vitest `< 3.2.6` allows arbitrary file read/execute when the Vitest UI server is listening | Vitest raised to `^3.2.6`; unused `@vitest/ui` removed entirely; dead Jest toolchain (`jest`, `ts-jest`, `jest-environment-node`, `@types/jest`, `jest.config.js`) deleted |
-| 17 | **High** | Vite `< 6.4.3` advisory (CVE via Vite dev server) | Root `pnpm.overrides` pins `vite ^6.4.3` and `esbuild ^0.25.0` |
-| 18 | **Medium** | `bcryptjs` at cost 10 takes ~2.7s per operation in pure JS — every login burns seconds of CPU, and the auth suite spent 35s hashing | `BCRYPT_COST` is configurable (default 10, production-safe); tests set cost 4. **Production note: migrate to native bcrypt or argon2id** |
+| 16 | **Critical** | **CVE-2026-47429** — Vitest `< 3.2.6` allows arbitrary file read/execute when the Vitest UI server is listening; unused `@vitest/ui` was installed | Vitest raised to `^4.1.11`; `@vitest/ui` removed; dead Jest toolchain deleted |
+| 17 | **Critical** | Vitest 3 pulled `tinypool@1.1.1`, affected by two prototype-pollution → RCE advisories (GHSA-5gmw-xhrv-c9v3, GHSA-85c8-ppgw-ccpr) | Vitest 4 drops the `tinypool` dependency entirely; it is absent from the lockfile |
+| 18 | **High** | Vite `< 6.4.3` dev-server advisory | Root `pnpm.overrides` pins `vite ^6.4.3` and `esbuild ^0.25.0` (both required — Vite 6 pulls an incompatible esbuild 0.18 otherwise) |
+| 19 | **Medium** | `bcryptjs` at cost 10 takes ~2.7s per operation in pure JS — every login burns seconds of CPU, and the auth suite spent 35s hashing | `BCRYPT_COST` configurable (default 10); tests use cost 4, suite drops to 2.4s. **Production: migrate to native bcrypt or argon2id** |
+| 20 | **Medium** | 23 of 23 tsconfigs lacked `*.test.ts` excludes, so `pnpm build` emitted test files into production output | All tsconfigs normalised; `dist/` now contains zero test files |
+| 21 | **Low** | Vitest 4 collected stale compiled suites from `dist/`, duplicating and failing suites | Per-package `vitest.config.ts` with explicit `include`/`exclude` |
 
 ---
 
